@@ -1,0 +1,7 @@
+{
+  "name": "reader_gate_host",
+  "description": "Backend Python para o Anti-Twitter — gerencia sessões de leitura",
+  "path": "/home/USUARIO/anti-twitter/anti_twitter/app.py",
+  "type": "stdio",
+  "allowed_extensions": ["anti-twitter@example.local"]
+}
