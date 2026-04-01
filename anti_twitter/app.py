@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import struct
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -74,6 +75,10 @@ def handle_message(msg):
         state["allowed_until"] = None
         state["current_session"] = {"book_id": book_id, "mode": mode, "amount": amount}
         save_state(state)
+
+        # Abre o livro com o programa padrão do sistema
+        subprocess.Popen(["xdg-open", book_id])
+
         return {"ok": True}
 
     if action == "complete_session":
