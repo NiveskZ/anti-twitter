@@ -4,10 +4,10 @@ function getTargetUrl() {
   return params.get("target") || "https://x.com/";
 }
 
-// Envia mensagem para o app.py via native messaging
+// Envia mensagem para o background, que repassa para o app.py
 async function callNative(message) {
   try {
-    return await browser.runtime.sendNativeMessage("reader_gate_host", message);
+    return await browser.runtime.sendMessage(message);
   } catch (err) {
     return { ok: false, error: String(err) };
   }
