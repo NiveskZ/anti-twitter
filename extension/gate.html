@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Reader Gate</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 760px;
+      margin: 40px auto;
+      padding: 0 16px;
+      line-height: 1.5;
+    }
+    .card {
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      padding: 20px;
+    }
+    .row {
+      margin: 14px 0;
+    }
+    button {
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+    .muted {
+      color: #666;
+      font-size: 0.95rem;
+    }
+    #status {
+      margin-top: 16px;
+      font-weight: bold;
+    }
+    #status.ok { color: green; }
+    #status.erro { color: red; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Antes do X</h1>
+    <p>Leia um pouco primeiro e depois o acesso será liberado.</p>
+
+    <div class="row">
+      <label for="bookSelect">Livro</label><br>
+      <select id="bookSelect"></select>
+    </div>
+
+    <div class="row">
+      <label for="modeSelect">Meta</label><br>
+      <select id="modeSelect">
+        <option value="chapter">Capítulo</option>
+        <option value="pages">Páginas</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <label for="amountInput">Quantidade</label><br>
+      <input id="amountInput" type="number" min="1" value="1">
+    </div>
+
+    <div class="row">
+      <button id="startBtn">Iniciar leitura</button>
+      <button id="completeBtn">Marcar como concluído</button>
+      <button id="enterBtn">Entrar no X</button>
+    </div>
+
+    <p class="muted" id="targetInfo"></p>
+    <div id="status"></div>
+  </div>
+
+  <script src="gate.js"></script>
+</body>
+</html>

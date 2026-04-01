@@ -1,0 +1,30 @@
+{
+  "manifest_version": 2,
+  "name": "Anti-Twitter",
+  "version": "0.2",
+  "description": "Intercepta X/Twitter e exige leitura antes de liberar acesso.",
+  "permissions": [
+    "tabs",
+    "storage",
+    "nativeMessaging",
+    "webRequest",
+    "webRequestBlocking",
+    "*://x.com/*",
+    "*://www.x.com/*",
+    "*://twitter.com/*",
+    "*://www.twitter.com/*"
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "anti-twitter@example.local",
+      "strict_min_version": "109.0"
+    }
+  },
+  "background": {
+    "page": "background.html"
+  },
+  "web_accessible_resources": [
+    "gate.html",
+    "gate.js"
+  ]
+}
