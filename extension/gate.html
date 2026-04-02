@@ -2,72 +2,259 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <title>Reader Gate</title>
+  <title>Antes do X</title>
   <style>
+    :root {
+      --cor-fundo:       #f5f4f0;
+      --cor-card:        #ffffff;
+      --cor-borda:       #e0dfd8;
+      --cor-texto:       #1a1a18;
+      --cor-mudo:        #666666;
+      --cor-ok:          #1e5c1e;
+      --cor-fundo-ok:    #eaf6ea;
+      --cor-erro:        #8b1f1f;
+      --cor-fundo-erro:  #fdecea;
+      --cor-info:        #1a3d6e;
+      --cor-fundo-info:  #edf4ff;
+      --raio:            8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      font-family: sans-serif;
-      max-width: 760px;
-      margin: 40px auto;
-      padding: 0 16px;
-      line-height: 1.5;
+      font-family: system-ui, sans-serif;
+      background: var(--cor-fundo);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
     }
+
     .card {
-      border: 1px solid #ccc;
+      background: var(--cor-card);
+      border: 1px solid var(--cor-borda);
+      border-radius: 14px;
+      padding: 28px;
+      width: 100%;
+      max-width: 540px;
+    }
+
+    h1 { font-size: 1.3rem; font-weight: 600; margin-bottom: 4px; }
+    .subtitulo { font-size: 0.9rem; color: var(--cor-mudo); margin-bottom: 20px; }
+
+    /* Abas de modo */
+    .modo-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      background: var(--cor-fundo);
       border-radius: 10px;
-      padding: 20px;
+      padding: 4px;
     }
-    .row {
-      margin: 14px 0;
-    }
-    button {
-      padding: 10px 14px;
+    .modo-tab {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 7px;
+      font-size: 0.85rem;
       cursor: pointer;
+      background: transparent;
+      color: var(--cor-mudo);
+      transition: all 0.15s;
     }
-    .muted {
-      color: #666;
-      font-size: 0.95rem;
+    .modo-tab.ativo {
+      background: var(--cor-card);
+      color: var(--cor-texto);
+      font-weight: 600;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     }
+
+    /* Campos de formulário */
+    .secao { margin-bottom: 16px; }
+    .secao label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #444;
+      margin-bottom: 6px;
+    }
+
+    select, input[type="number"] {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: var(--raio);
+      font-size: 0.9rem;
+      background: var(--cor-card);
+      color: var(--cor-texto);
+      outline: none;
+    }
+    select:focus, input:focus { border-color: #888; }
+
+    .linha-dupla { display: flex; gap: 10px; }
+    .linha-dupla > * { flex: 1; }
+
+    /* Escalas de humor/energia */
+    .escala { display: flex; gap: 6px; }
+    .escala-btn {
+      flex: 1;
+      padding: 6px 0;
+      border: 1px solid #ddd;
+      border-radius: 7px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      background: var(--cor-card);
+      color: #555;
+      transition: all 0.15s;
+    }
+    .escala-btn.selecionado {
+      background: var(--cor-texto);
+      color: #fff;
+      border-color: var(--cor-texto);
+    }
+
+    /* Upload */
+    .btn-upload {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border: 1.5px dashed #bbb;
+      border-radius: var(--raio);
+      font-size: 0.85rem;
+      color: #555;
+      cursor: pointer;
+      background: #fafaf8;
+      transition: all 0.15s;
+      margin-top: 8px;
+    }
+    .btn-upload:hover { border-color: #888; color: var(--cor-texto); }
+    #inputArquivo { display: none; }
+
+    /* Botões */
+    .acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 20px; }
+    button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: var(--raio);
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    button:hover   { opacity: 0.85; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-primario   { background: #1a1a18; color: #fff; font-weight: 500; }
+    .btn-secundario { background: #f0efeb; color: #333; }
+    .btn-destaque   { background: #2d7a2d; color: #fff; font-weight: 500; }
+
+    /* Status */
     #status {
       margin-top: 16px;
-      font-weight: bold;
+      padding: 10px 14px;
+      border-radius: var(--raio);
+      font-size: 0.9rem;
+      background: var(--cor-fundo);
+      color: #444;
+      line-height: 1.4;
     }
-    #status.ok { color: green; }
-    #status.erro { color: red; }
+    #status.ok   { background: var(--cor-fundo-ok);   color: var(--cor-ok);   }
+    #status.erro { background: var(--cor-fundo-erro);  color: var(--cor-erro); }
+    #status.info { background: var(--cor-fundo-info);  color: var(--cor-info); }
+
+    .muted { font-size: 0.82rem; color: #888; margin-top: 8px; }
+
+    [data-so-modo] { display: none; }
+    [data-so-modo].visivel { display: block; }
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>Antes do X</h1>
-    <p>Leia um pouco primeiro e depois o acesso será liberado.</p>
+    <h1>📖 Antes do X</h1>
 
-    <div class="row">
-      <label for="bookSelect">Livro</label><br>
-      <select id="bookSelect"></select>
+    <p class="subtitulo" id="destinoInfo">Carregando…</p>
+
+    <!-- Seletor de modo -->
+    <div class="modo-tabs">
+      <button class="modo-tab" id="tabJS"
+              onclick="trocarModo('js')">
+        Modo JS · sem instalação
+      </button>
+      <button class="modo-tab" id="tabPython"
+              onclick="trocarModo('python')">
+        Modo Python · arquivos locais
+      </button>
     </div>
 
-    <div class="row">
-      <label for="modeSelect">Meta</label><br>
-      <select id="modeSelect">
-        <option value="chapter">Capítulo</option>
-        <option value="pages">Páginas</option>
+    <!-- Livro - só aparece no modo JS -->
+    <div class="secao" data-so-modo="js" id="secaoLivroJS">
+      <label>Livro</label>
+      <select id="selectLivroJS">
+        <option value="">Carregando livros…</option>
+      </select>
+      <label class="btn-upload" for="inputArquivo">
+        + Adicionar livro (epub / pdf)
+      </label>
+      <input type="file" id="inputArquivo" accept=".epub,.pdf" multiple>
+    </div>
+
+    <!-- Livro - só aparece no modo Python -->
+    <div class="secao" data-so-modo="python" id="secaoLivroPython">
+      <label>Livro (pasta ~/livros)</label>
+      <select id="selectLivroPython">
+        <option value="">Carregando livros…</option>
       </select>
     </div>
 
-    <div class="row">
-      <label for="amountInput">Quantidade</label><br>
-      <input id="amountInput" type="number" min="1" value="1">
+    <!-- Meta de leitura -->
+    <div class="secao">
+      <label>Meta de leitura</label>
+      <div class="linha-dupla">
+        <select id="tipoMeta">
+          <option value="chapter">Capítulo(s)</option>
+          <option value="pages">Página(s)</option>
+        </select>
+        <input type="number" id="quantidadeMeta" min="1" value="1">
+      </div>
     </div>
 
-    <div class="row">
-      <button id="startBtn">Iniciar leitura</button>
-      <button id="completeBtn">Marcar como concluído</button>
-      <button id="enterBtn">Entrar no X</button>
+    <!-- Escalas opcionais para analytics -->
+    <div class="secao">
+      <label>Humor agora (opcional · para seus dados)</label>
+      <div class="escala" id="escalaHumor">
+        <button class="escala-btn" data-valor="1" onclick="selecionarEscala('humor',1)">😞 1</button>
+        <button class="escala-btn" data-valor="2" onclick="selecionarEscala('humor',2)">😕 2</button>
+        <button class="escala-btn" data-valor="3" onclick="selecionarEscala('humor',3)">😐 3</button>
+        <button class="escala-btn" data-valor="4" onclick="selecionarEscala('humor',4)">🙂 4</button>
+        <button class="escala-btn" data-valor="5" onclick="selecionarEscala('humor',5)">😄 5</button>
+      </div>
     </div>
 
-    <p class="muted" id="targetInfo"></p>
-    <div id="status"></div>
+    <div class="secao">
+      <label>Energia agora (opcional)</label>
+      <div class="escala" id="escalaEnergia">
+        <button class="escala-btn" data-valor="1" onclick="selecionarEscala('energia',1)">🪫 1</button>
+        <button class="escala-btn" data-valor="2" onclick="selecionarEscala('energia',2)">😴 2</button>
+        <button class="escala-btn" data-valor="3" onclick="selecionarEscala('energia',3)">⚡ 3</button>
+        <button class="escala-btn" data-valor="4" onclick="selecionarEscala('energia',4)">🔋 4</button>
+        <button class="escala-btn" data-valor="5" onclick="selecionarEscala('energia',5)">🚀 5</button>
+      </div>
+    </div>
+
+    <!-- Ações -->
+    <div class="acoes">
+      <button class="btn-primario"   id="btnIniciar"  onclick="iniciarSessao()">Iniciar leitura</button>
+      <button class="btn-secundario" id="btnConcluir" onclick="concluirSessao()">Marcar como concluído</button>
+      <button class="btn-destaque"   id="btnEntrar"   onclick="entrarNoSite()">Entrar no site →</button>
+    </div>
+
+    <div id="status">Verificando acesso…</div>
+    <p class="muted" id="rodape"></p>
   </div>
 
+  <!-- Scripts no final do body — elementos já existem quando o JS rodar -->
+  <script src="analytics.js"></script>
   <script src="gate.js"></script>
 </body>
 </html>
