@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Anti-Twitter · Configurações</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f4f0;
+      padding: 32px 16px;
+      color: #1a1a18;
+    }
+    .container { max-width: 600px; margin: 0 auto; }
+
+    h1 { font-size: 1.4rem; font-weight: 600; margin-bottom: 4px; }
+    .subtitulo { font-size: 0.9rem; color: #666; margin-bottom: 28px; }
+
+    .card {
+      background: #fff;
+      border: 1px solid #e0dfd8;
+      border-radius: 12px;
+      padding: 22px;
+      margin-bottom: 16px;
+    }
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #f0efeb;
+    }
+
+    /* Toggle de modo */
+    .modo-opcoes { display: flex; gap: 10px; }
+    .modo-opcao {
+      flex: 1;
+      padding: 14px;
+      border: 2px solid #e0dfd8;
+      border-radius: 10px;
+      cursor: pointer;
+      background: #fff;
+      text-align: left;
+      transition: all 0.15s;
+    }
+    .modo-opcao.ativo { border-color: #1a1a18; background: #f8f8f6; }
+    .modo-opcao strong { display: block; font-size: 0.9rem; margin-bottom: 4px; }
+    .modo-opcao span { font-size: 0.8rem; color: #666; }
+
+    /* Sites */
+    .lista-sites { list-style: none; margin-bottom: 12px; }
+    .lista-sites li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0efeb;
+      font-size: 0.9rem;
+    }
+    .lista-sites li:last-child { border-bottom: none; }
+    .btn-remover {
+      background: none;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 3px 8px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      color: #888;
+    }
+    .btn-remover:hover { border-color: #c00; color: #c00; }
+
+    .add-site { display: flex; gap: 8px; margin-top: 8px; }
+    .add-site input {
+      flex: 1;
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 7px;
+      font-size: 0.9rem;
+    }
+
+    /* Livros (modo JS) */
+    .lista-livros { list-style: none; margin-bottom: 12px; }
+    .lista-livros li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0efeb;
+      font-size: 0.88rem;
+    }
+    .label-formato {
+      font-size: 0.75rem;
+      background: #f0efeb;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #666;
+      margin-left: 8px;
+    }
+
+    /* Analytics */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .stat-box {
+      background: #f8f8f6;
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+    }
+    .stat-numero { font-size: 1.5rem; font-weight: 600; color: #1a1a18; }
+    .stat-label  { font-size: 0.78rem; color: #888; margin-top: 2px; }
+
+    /* Botões gerais */
+    .btn {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 7px;
+      font-size: 0.88rem;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .btn-primario   { background: #1a1a18; color: #fff; }
+    .btn-secundario { background: #f0efeb; color: #444; }
+    .btn-perigo     { background: #fdecea; color: #8b1f1f; }
+    .btn:hover { opacity: 0.85; }
+
+    .acoes-analytics { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* Duracao de acesso */
+    input[type="number"] {
+      width: 80px;
+      padding: 6px 10px;
+      border: 1px solid #ddd;
+      border-radius: 7px;
+      font-size: 0.9rem;
+    }
+    .linha-config {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.9rem;
+      margin-bottom: 12px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1a1a18;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+    .toast.visivel { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⚙️ Configurações</h1>
+    <p class="subtitulo">Anti-Twitter · versão 0.3</p>
+
+    <!-- Modo de operação -->
+    <div class="card">
+      <h2>Modo de operação</h2>
+      <div class="modo-opcoes">
+        <button class="modo-opcao" id="opcaoJS" onclick="selecionarModo('js')">
+          <strong>🟢 Modo JS</strong>
+          <span>Sem instalação adicional. Livros armazenados no browser.</span>
+        </button>
+        <button class="modo-opcao" id="opcaoPython" onclick="selecionarModo('python')">
+          <strong>🐍 Modo Python</strong>
+          <span>Requer app.py rodando. Abre livros no seu app favorito.</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Configuração geral -->
+    <div class="card">
+      <h2>Configurações gerais</h2>
+      <div class="linha-config">
+        <label>Duração do acesso (minutos):</label>
+        <input type="number" id="duracaoAcesso" min="5" max="480" value="60">
+      </div>
+      <button class="btn btn-primario" onclick="salvarConfigGeral()">Salvar</button>
+    </div>
+
+    <!-- Sites bloqueados -->
+    <div class="card">
+      <h2>Sites bloqueados</h2>
+      <ul class="lista-sites" id="listaSites"></ul>
+      <div class="add-site">
+        <input type="text" id="novoSite" placeholder="ex: instagram.com" />
+        <button class="btn btn-primario" onclick="adicionarSite()">Adicionar</button>
+      </div>
+    </div>
+
+    <!-- Livros (modo JS) -->
+    <div class="card" id="cardLivros">
+      <h2>Livros (modo JS)</h2>
+      <ul class="lista-livros" id="listaLivros">
+        <li style="color:#888; font-size:0.85rem;">Nenhum livro adicionado</li>
+      </ul>
+      <label class="btn btn-secundario" for="uploadLivros" style="cursor:pointer; display:inline-block;">
+        + Adicionar livros (epub / pdf)
+      </label>
+      <input type="file" id="uploadLivros" accept=".epub,.pdf" multiple style="display:none">
+    </div>
+
+    <!-- Analytics -->
+    <div class="card">
+      <h2>📊 Seus dados de comportamento</h2>
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-box"><div class="stat-numero" id="statTentativas">—</div><div class="stat-label">tentativas totais</div></div>
+        <div class="stat-box"><div class="stat-numero" id="statTaxa">—</div><div class="stat-label">taxa de conclusão</div></div>
+        <div class="stat-box"><div class="stat-numero" id="statPico">—</div><div class="stat-label">hora de pico</div></div>
+        <div class="stat-box"><div class="stat-numero" id="statHumor">—</div><div class="stat-label">humor médio</div></div>
+      </div>
+      <div class="acoes-analytics">
+        <button class="btn btn-primario"   onclick="exportarCSV()">⬇ Exportar CSV</button>
+        <button class="btn btn-perigo"     onclick="limparDados()">🗑 Limpar dados</button>
+      </div>
+      <p style="font-size:0.8rem; color:#888; margin-top:10px;">
+        O CSV pode ser carregado com <code>pd.read_csv()</code> no pandas.
+      </p>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="analytics.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

@@ -20,6 +20,12 @@
   "background": {
     "page": "background.html"
   },
+
+  "options_ui": {
+    "page": "options.html",
+    "browser_style": true
+  },
+  
   "web_accessible_resources": [
     "gate.html",
     "gate.js",
