@@ -4,15 +4,12 @@
   "version": "0.2",
   "description": "Intercepta X/Twitter e exige leitura antes de liberar acesso.",
   "permissions": [
-    "tabs",
-    "storage",
-    "nativeMessaging",
-    "webRequest",
-    "webRequestBlocking",
-    "*://x.com/*",
-    "*://www.x.com/*",
-    "*://twitter.com/*",
-    "*://www.twitter.com/*"
+  "tabs",
+  "storage",
+  "nativeMessaging",
+  "webRequest",
+  "webRequestBlocking",
+  "<all_urls>"
   ],
   "browser_specific_settings": {
     "gecko": {
@@ -25,6 +22,7 @@
   },
   "web_accessible_resources": [
     "gate.html",
-    "gate.js"
+    "gate.js",
+    "analytics.js"
   ]
 }
