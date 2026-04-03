@@ -72,6 +72,28 @@
     }
     #btnConcluirReader:disabled { background: #555; cursor: not-allowed; }
 
+    .acoes-pdf {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .acoes-pdf button {
+      padding: 6px 10px;
+      border: none;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.14);
+      color: #fff;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    #textoZoomPDF {
+      min-width: 46px;
+      text-align: center;
+      font-size: 0.78rem;
+      color: #d7d7d7;
+    }
+
     #areaLivro {
       flex: 1;
       overflow: hidden;
@@ -105,16 +127,16 @@
     #viewerPDF {
       width: 100%;
       height: 100%;
-      overflow-y: auto;
+      overflow: auto;
       display: flex;
       flex-direction: column;
-      align-items: center;
+      align-items: flex-start;
       padding: 16px;
       gap: 12px;
     }
     .pagina-pdf {
       width: fit-content;
-      max-width: 100%;
+      margin: 0 auto;
     }
     .pagina-pdf canvas,
     .pagina-pdf-placeholder {
@@ -191,6 +213,68 @@
     #btnMetaDaqui {
       background: rgba(76,175,80,0.22);
     }
+
+    #painelSumario {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 300px;
+      max-width: 85vw;
+      background: rgba(255,255,255,0.98);
+      border-right: 1px solid #e4e2da;
+      box-shadow: 8px 0 22px rgba(0,0,0,0.08);
+      display: none;
+      flex-direction: column;
+      z-index: 25;
+    }
+    #painelSumario.aberto {
+      display: flex;
+    }
+    .sumario-topo {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 14px 16px;
+      border-bottom: 1px solid #efede6;
+    }
+    .sumario-topo h2 {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: #1a1a18;
+    }
+    .sumario-topo button {
+      border: none;
+      background: #f3f1eb;
+      border-radius: 6px;
+      padding: 6px 10px;
+      color: #444;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    #listaSumario {
+      overflow: auto;
+      padding: 10px 8px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .item-sumario {
+      width: 100%;
+      text-align: left;
+      padding: 8px 10px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: #2f2d29;
+      font-size: 0.84rem;
+      cursor: pointer;
+    }
+    .item-sumario:hover {
+      background: #f3f1eb;
+    }
+    .item-sumario.nivel-1 { padding-left: 22px; }
+    .item-sumario.nivel-2 { padding-left: 34px; }
+    .item-sumario.nivel-3 { padding-left: 46px; }
   </style>
 </head>
 <body>
@@ -206,11 +290,24 @@
         <div class="barra-progresso-fill" id="fillProgresso" style="width:0%"></div>
       </div>
     </div>
+    <div class="acoes-pdf" id="acoesPDF">
+      <button id="btnToggleSumario" type="button">Sumário</button>
+      <button id="btnZoomMenos" type="button">A-</button>
+      <span id="textoZoomPDF">100%</span>
+      <button id="btnZoomMais" type="button">A+</button>
+    </div>
     <button id="btnConcluirReader" disabled>Meta não atingida</button>
   </div>
 
   <div id="areaLivro">
     <div id="carregando">⏳ Carregando livro…</div>
+    <aside id="painelSumario">
+      <div class="sumario-topo">
+        <h2>Sumário</h2>
+        <button id="btnFecharSumario" type="button">Fechar</button>
+      </div>
+      <div id="listaSumario"></div>
+    </aside>
 
     <div id="viewerEpub" style="display:none;">
       <button class="nav-epub" id="btnAnterior">‹</button>
