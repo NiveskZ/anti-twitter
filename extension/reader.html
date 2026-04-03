@@ -7,7 +7,6 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, sans-serif; background: #f5f4f0; height: 100vh; display: flex; flex-direction: column; }
 
-    /* Barra superior */
     .barra {
       background: #1a1a18;
       color: #fff;
@@ -55,7 +54,6 @@
     }
     #btnConcluirReader:disabled { background: #555; cursor: not-allowed; }
 
-    /* Área do livro */
     #areaLivro {
       flex: 1;
       overflow: hidden;
@@ -63,13 +61,11 @@
       position: relative;
     }
 
-    /* epub.js renderiza aqui */
     #viewerEpub {
       width: 100%;
       height: 100%;
     }
 
-    /* Navegação epub */
     .nav-epub {
       position: absolute;
       top: 50%;
@@ -88,7 +84,6 @@
     #btnAnterior { left: 4px; }
     #btnProximo  { right: 4px; }
 
-    /* PDF: canvas numa área rolável */
     #viewerPDF {
       width: 100%;
       height: 100%;
@@ -105,7 +100,6 @@
       border-radius: 4px;
     }
 
-    /* Loading */
     #carregando {
       position: absolute;
       inset: 0;
@@ -119,7 +113,6 @@
   </style>
 </head>
 <body>
-  <!-- Barra superior -->
   <div class="barra">
     <h1 id="tituloLivro">Carregando…</h1>
     <div class="progresso-wrap">
@@ -128,27 +121,20 @@
         <div class="barra-progresso-fill" id="fillProgresso" style="width:0%"></div>
       </div>
     </div>
-    <button id="btnConcluirReader" disabled onclick="concluirLeitura()">
-      Meta não atingida
-    </button>
+    <button id="btnConcluirReader" disabled>Meta não atingida</button>
   </div>
 
-  <!-- Área do livro -->
   <div id="areaLivro">
     <div id="carregando">⏳ Carregando livro…</div>
 
-    <!-- Epub.js renderiza aqui -->
     <div id="viewerEpub" style="display:none;">
-      <button class="nav-epub" id="btnAnterior" onclick="paginaAnterior()">‹</button>
-      <button class="nav-epub" id="btnProximo"  onclick="proximaPagina()">›</button>
+      <button class="nav-epub" id="btnAnterior">‹</button>
+      <button class="nav-epub" id="btnProximo">›</button>
     </div>
 
-    <!-- PDF.js: mostra todas as páginas numa coluna rolável -->
     <div id="viewerPDF" style="display:none;"></div>
   </div>
 
-  <!-- Bibliotecas carregadas sob demanda -->
-  <!-- epub.js e pdf.js são carregados dinamicamente no reader.js -->
   <script src="reader.js"></script>
 </body>
 </html>

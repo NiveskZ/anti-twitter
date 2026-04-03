@@ -269,4 +269,30 @@ async function limparDados() {
   renderizarSites();
   await renderizarLivros();
   await carregarAnalytics();
+
+  // ─── Event listeners ──────────────────────────────────────────────────────────
+  document.getElementById("opcaoJS").addEventListener("click", () => selecionarModo("js"));
+  document.getElementById("opcaoPython").addEventListener("click", () => selecionarModo("python"));
+  document.getElementById("btnSalvarGeral").addEventListener("click", salvarConfigGeral);
+  document.getElementById("btnAdicionarSite").addEventListener("click", adicionarSite);
+  document.getElementById("btnExportarCSV").addEventListener("click", exportarCSV);
+  document.getElementById("btnLimparDados").addEventListener("click", limparDados);
+
+  document.getElementById("novoSite").addEventListener("keydown", e => {
+    if (e.key === "Enter") adicionarSite();
+  });
+
+  document.getElementById("uploadLivros").addEventListener("change", async e => {
+    const arquivos = Array.from(e.target.files);
+    for (const arq of arquivos) {
+      const buf  = await arq.arrayBuffer();
+      const fmt  = arq.name.endsWith(".epub") ? "epub" : "pdf";
+      const id   = `livro_${Date.now()}_${arq.name}`;
+      const nome = arq.name.replace(/\.(epub|pdf)$/i, "");
+      await BookDB.salvar(id, nome, fmt, buf);
+    }
+    await renderizarLivros();
+    mostrarToast(`${arquivos.length} livro(s) adicionado(s)`);
+    e.target.value = "";
+  });
 })();

@@ -174,7 +174,7 @@ function trocarModo(modo) {
     el.classList.toggle("visivel", el.dataset.soModo === modo);
   });
 
-  // Salva preferência (sem await — fire-and-forget, não precisamos da resposta)
+  // Salva preferência
   callNative({ action: "save_config", config: { modo } });
 
   // Recarrega livros e status para o modo ativo
@@ -203,7 +203,7 @@ async function carregarLivros() {
     select.innerHTML = ""; // limpa opções anteriores
 
     if (livros.length === 0) {
-      select.innerHTML = '<option value="">Nenhum livro — adicione um abaixo</option>';
+      select.innerHTML = '<option value="">Nenhum livro -- adicione um abaixo</option>';
       return;
     }
 
@@ -410,4 +410,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("rodape").innerHTML =
     `<a href="${browser.runtime.getURL("options.html")}" target="_blank">⚙️ Configurações</a>` +
     ` · Modo: ${modo === "js" ? "JS (sem Python)" : "Python"}`;
+
+  // ─── Event listeners ─────────────────────────────────────────────────────────
+  document.getElementById("tabJS").addEventListener("click", () => trocarModo("js"));
+  document.getElementById("tabPython").addEventListener("click", () => trocarModo("python"));
+  document.getElementById("btnIniciar").addEventListener("click", iniciarSessao);
+  document.getElementById("btnConcluir").addEventListener("click", concluirSessao);
+  document.getElementById("btnEntrar").addEventListener("click", entrarNoSite);
+
+  document.querySelectorAll("#escalaHumor .escala-btn").forEach(btn => {
+    btn.addEventListener("click", () => selecionarEscala("humor", Number(btn.dataset.valor)));
+  });
+  document.querySelectorAll("#escalaEnergia .escala-btn").forEach(btn => {
+    btn.addEventListener("click", () => selecionarEscala("energia", Number(btn.dataset.valor)));
+  });
 });

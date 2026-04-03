@@ -31,7 +31,6 @@
       border-bottom: 1px solid #f0efeb;
     }
 
-    /* Toggle de modo */
     .modo-opcoes { display: flex; gap: 10px; }
     .modo-opcao {
       flex: 1;
@@ -47,7 +46,6 @@
     .modo-opcao strong { display: block; font-size: 0.9rem; margin-bottom: 4px; }
     .modo-opcao span { font-size: 0.8rem; color: #666; }
 
-    /* Sites */
     .lista-sites { list-style: none; margin-bottom: 12px; }
     .lista-sites li {
       display: flex;
@@ -78,7 +76,6 @@
       font-size: 0.9rem;
     }
 
-    /* Livros (modo JS) */
     .lista-livros { list-style: none; margin-bottom: 12px; }
     .lista-livros li {
       display: flex;
@@ -97,7 +94,6 @@
       margin-left: 8px;
     }
 
-    /* Analytics */
     .stats-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -113,7 +109,6 @@
     .stat-numero { font-size: 1.5rem; font-weight: 600; color: #1a1a18; }
     .stat-label  { font-size: 0.78rem; color: #888; margin-top: 2px; }
 
-    /* Botões gerais */
     .btn {
       padding: 8px 14px;
       border: none;
@@ -129,7 +124,6 @@
 
     .acoes-analytics { display: flex; gap: 8px; flex-wrap: wrap; }
 
-    /* Duracao de acesso */
     input[type="number"] {
       width: 80px;
       padding: 6px 10px;
@@ -167,42 +161,38 @@
     <h1>⚙️ Configurações</h1>
     <p class="subtitulo">Anti-Twitter · versão 0.3</p>
 
-    <!-- Modo de operação -->
     <div class="card">
       <h2>Modo de operação</h2>
       <div class="modo-opcoes">
-        <button class="modo-opcao" id="opcaoJS" onclick="selecionarModo('js')">
+        <button class="modo-opcao" id="opcaoJS">
           <strong>🟢 Modo JS</strong>
           <span>Sem instalação adicional. Livros armazenados no browser.</span>
         </button>
-        <button class="modo-opcao" id="opcaoPython" onclick="selecionarModo('python')">
+        <button class="modo-opcao" id="opcaoPython">
           <strong>🐍 Modo Python</strong>
           <span>Requer app.py rodando. Abre livros no seu app favorito.</span>
         </button>
       </div>
     </div>
 
-    <!-- Configuração geral -->
     <div class="card">
       <h2>Configurações gerais</h2>
       <div class="linha-config">
         <label>Duração do acesso (minutos):</label>
         <input type="number" id="duracaoAcesso" min="5" max="480" value="60">
       </div>
-      <button class="btn btn-primario" onclick="salvarConfigGeral()">Salvar</button>
+      <button class="btn btn-primario" id="btnSalvarGeral">Salvar</button>
     </div>
 
-    <!-- Sites bloqueados -->
     <div class="card">
       <h2>Sites bloqueados</h2>
       <ul class="lista-sites" id="listaSites"></ul>
       <div class="add-site">
         <input type="text" id="novoSite" placeholder="ex: instagram.com" />
-        <button class="btn btn-primario" onclick="adicionarSite()">Adicionar</button>
+        <button class="btn btn-primario" id="btnAdicionarSite">Adicionar</button>
       </div>
     </div>
 
-    <!-- Livros (modo JS) -->
     <div class="card" id="cardLivros">
       <h2>Livros (modo JS)</h2>
       <ul class="lista-livros" id="listaLivros">
@@ -214,7 +204,6 @@
       <input type="file" id="uploadLivros" accept=".epub,.pdf" multiple style="display:none">
     </div>
 
-    <!-- Analytics -->
     <div class="card">
       <h2>📊 Seus dados de comportamento</h2>
       <div class="stats-grid" id="statsGrid">
@@ -224,8 +213,8 @@
         <div class="stat-box"><div class="stat-numero" id="statHumor">—</div><div class="stat-label">humor médio</div></div>
       </div>
       <div class="acoes-analytics">
-        <button class="btn btn-primario"   onclick="exportarCSV()">⬇ Exportar CSV</button>
-        <button class="btn btn-perigo"     onclick="limparDados()">🗑 Limpar dados</button>
+        <button class="btn btn-primario" id="btnExportarCSV">⬇ Exportar CSV</button>
+        <button class="btn btn-perigo"   id="btnLimparDados">🗑 Limpar dados</button>
       </div>
       <p style="font-size:0.8rem; color:#888; margin-top:10px;">
         O CSV pode ser carregado com <code>pd.read_csv()</code> no pandas.

@@ -43,7 +43,6 @@
     h1 { font-size: 1.3rem; font-weight: 600; margin-bottom: 4px; }
     .subtitulo { font-size: 0.9rem; color: var(--cor-mudo); margin-bottom: 20px; }
 
-    /* Abas de modo */
     .modo-tabs {
       display: flex;
       gap: 8px;
@@ -70,7 +69,6 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     }
 
-    /* Campos de formulário */
     .secao { margin-bottom: 16px; }
     .secao label {
       display: block;
@@ -95,7 +93,6 @@
     .linha-dupla { display: flex; gap: 10px; }
     .linha-dupla > * { flex: 1; }
 
-    /* Escalas de humor/energia */
     .escala { display: flex; gap: 6px; }
     .escala-btn {
       flex: 1;
@@ -114,7 +111,6 @@
       border-color: var(--cor-texto);
     }
 
-    /* Upload */
     .btn-upload {
       display: inline-flex;
       align-items: center;
@@ -132,7 +128,6 @@
     .btn-upload:hover { border-color: #888; color: var(--cor-texto); }
     #inputArquivo { display: none; }
 
-    /* Botões */
     .acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 20px; }
     button {
       padding: 10px 16px;
@@ -149,7 +144,6 @@
     .btn-secundario { background: #f0efeb; color: #333; }
     .btn-destaque   { background: #2d7a2d; color: #fff; font-weight: 500; }
 
-    /* Status */
     #status {
       margin-top: 16px;
       padding: 10px 14px;
@@ -175,39 +169,23 @@
 
     <p class="subtitulo" id="destinoInfo">Carregando…</p>
 
-    <!-- Seletor de modo -->
     <div class="modo-tabs">
-      <button class="modo-tab" id="tabJS"
-              onclick="trocarModo('js')">
-        Modo JS · sem instalação
-      </button>
-      <button class="modo-tab" id="tabPython"
-              onclick="trocarModo('python')">
-        Modo Python · arquivos locais
-      </button>
+      <button class="modo-tab" id="tabJS">Modo JS · sem instalação</button>
+      <button class="modo-tab" id="tabPython">Modo Python · arquivos locais</button>
     </div>
 
-    <!-- Livro - só aparece no modo JS -->
     <div class="secao" data-so-modo="js" id="secaoLivroJS">
       <label>Livro</label>
-      <select id="selectLivroJS">
-        <option value="">Carregando livros…</option>
-      </select>
-      <label class="btn-upload" for="inputArquivo">
-        + Adicionar livro (epub / pdf)
-      </label>
+      <select id="selectLivroJS"></select>
+      <label class="btn-upload" for="inputArquivo">+ Adicionar livro (epub / pdf)</label>
       <input type="file" id="inputArquivo" accept=".epub,.pdf" multiple>
     </div>
 
-    <!-- Livro - só aparece no modo Python -->
     <div class="secao" data-so-modo="python" id="secaoLivroPython">
       <label>Livro (pasta ~/livros)</label>
-      <select id="selectLivroPython">
-        <option value="">Carregando livros…</option>
-      </select>
+      <select id="selectLivroPython"></select>
     </div>
 
-    <!-- Meta de leitura -->
     <div class="secao">
       <label>Meta de leitura</label>
       <div class="linha-dupla">
@@ -219,41 +197,38 @@
       </div>
     </div>
 
-    <!-- Escalas opcionais para analytics -->
     <div class="secao">
       <label>Humor agora (opcional · para seus dados)</label>
       <div class="escala" id="escalaHumor">
-        <button class="escala-btn" data-valor="1" onclick="selecionarEscala('humor',1)">😞 1</button>
-        <button class="escala-btn" data-valor="2" onclick="selecionarEscala('humor',2)">😕 2</button>
-        <button class="escala-btn" data-valor="3" onclick="selecionarEscala('humor',3)">😐 3</button>
-        <button class="escala-btn" data-valor="4" onclick="selecionarEscala('humor',4)">🙂 4</button>
-        <button class="escala-btn" data-valor="5" onclick="selecionarEscala('humor',5)">😄 5</button>
+        <button class="escala-btn" data-valor="1">😞 1</button>
+        <button class="escala-btn" data-valor="2">😕 2</button>
+        <button class="escala-btn" data-valor="3">😐 3</button>
+        <button class="escala-btn" data-valor="4">🙂 4</button>
+        <button class="escala-btn" data-valor="5">😄 5</button>
       </div>
     </div>
 
     <div class="secao">
       <label>Energia agora (opcional)</label>
       <div class="escala" id="escalaEnergia">
-        <button class="escala-btn" data-valor="1" onclick="selecionarEscala('energia',1)">🪫 1</button>
-        <button class="escala-btn" data-valor="2" onclick="selecionarEscala('energia',2)">😴 2</button>
-        <button class="escala-btn" data-valor="3" onclick="selecionarEscala('energia',3)">⚡ 3</button>
-        <button class="escala-btn" data-valor="4" onclick="selecionarEscala('energia',4)">🔋 4</button>
-        <button class="escala-btn" data-valor="5" onclick="selecionarEscala('energia',5)">🚀 5</button>
+        <button class="escala-btn" data-valor="1">🪫 1</button>
+        <button class="escala-btn" data-valor="2">😴 2</button>
+        <button class="escala-btn" data-valor="3">⚡ 3</button>
+        <button class="escala-btn" data-valor="4">🔋 4</button>
+        <button class="escala-btn" data-valor="5">🚀 5</button>
       </div>
     </div>
 
-    <!-- Ações -->
     <div class="acoes">
-      <button class="btn-primario"   id="btnIniciar"  onclick="iniciarSessao()">Iniciar leitura</button>
-      <button class="btn-secundario" id="btnConcluir" onclick="concluirSessao()">Marcar como concluído</button>
-      <button class="btn-destaque"   id="btnEntrar"   onclick="entrarNoSite()">Entrar no site →</button>
+      <button class="btn-primario"   id="btnIniciar">Iniciar leitura</button>
+      <button class="btn-secundario" id="btnConcluir">Marcar como concluído</button>
+      <button class="btn-destaque"   id="btnEntrar">Entrar no site →</button>
     </div>
 
     <div id="status">Verificando acesso…</div>
     <p class="muted" id="rodape"></p>
   </div>
 
-  <!-- Scripts no final do body — elementos já existem quando o JS rodar -->
   <script src="analytics.js"></script>
   <script src="gate.js"></script>
 </body>

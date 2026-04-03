@@ -209,6 +209,17 @@ async function iniciarPDF(arrayBuffer) {
   btn.disabled    = true;
   btn.textContent = `0 / ${metaTotal} ${tipoMeta === "chapter" ? "capítulo(s)" : "página(s)"}`;
 
+  // ─── Event listeners ──────────────────────────────────────────────────────────
+  document.getElementById("btnAnterior").addEventListener("click", paginaAnterior);
+  document.getElementById("btnProximo").addEventListener("click", proximaPagina);
+  document.getElementById("btnConcluirReader").addEventListener("click", concluirLeitura);
+
+  // Navegação por teclado
+  document.addEventListener("keydown", e => {
+    if (e.key === "ArrowLeft")  paginaAnterior();
+    if (e.key === "ArrowRight") proximaPagina();
+  });
+
   try {
     const registro = await BookDB.buscar(bookId);
 
