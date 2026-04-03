@@ -112,16 +112,31 @@
       padding: 16px;
       gap: 12px;
     }
-    #viewerPDF canvas {
+    .pagina-pdf {
+      width: fit-content;
+      max-width: 100%;
+    }
+    .pagina-pdf canvas,
+    .pagina-pdf-placeholder {
       max-width: 100%;
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
       border-radius: 4px;
       transition: box-shadow 0.18s, outline-color 0.18s;
+      display: block;
     }
-    #viewerPDF canvas.lida {
+    .pagina-pdf-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f7f6f2;
+      color: #9b998f;
+      font-size: 0.82rem;
+    }
+    .pagina-pdf.lida canvas {
       box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.35), 0 2px 8px rgba(0,0,0,0.15);
     }
-    #viewerPDF canvas.ignorada {
+    .pagina-pdf.ignorada canvas,
+    .pagina-pdf.ignorada .pagina-pdf-placeholder {
       box-shadow: 0 0 0 2px rgba(160, 160, 160, 0.22), 0 2px 8px rgba(0,0,0,0.15);
     }
 
@@ -134,6 +149,47 @@
       background: #fff;
       font-size: 0.9rem;
       color: #888;
+    }
+    #rodapePagina {
+      position: absolute;
+      right: 16px;
+      bottom: 16px;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 8px;
+      border-radius: 999px;
+      background: rgba(26,26,24,0.78);
+      color: #fff;
+      font-size: 0.78rem;
+      letter-spacing: 0.01em;
+      z-index: 20;
+    }
+    #rodapePagina input {
+      width: 62px;
+      padding: 4px 6px;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      text-align: center;
+      font-size: 0.78rem;
+    }
+    #rodapePagina input:focus {
+      outline: none;
+      border-color: rgba(255,255,255,0.38);
+    }
+    #rodapePagina button {
+      border: none;
+      border-radius: 999px;
+      padding: 4px 8px;
+      background: rgba(255,255,255,0.16);
+      color: #fff;
+      font-size: 0.74rem;
+      cursor: pointer;
+    }
+    #btnMetaDaqui {
+      background: rgba(76,175,80,0.22);
     }
   </style>
 </head>
@@ -162,6 +218,13 @@
     </div>
 
     <div id="viewerPDF" style="display:none;"></div>
+    <div id="rodapePagina">
+      <span>Página</span>
+      <input type="number" id="inputPaginaPDF" min="1" value="1">
+      <span id="totalPaginasPDF">/ 0</span>
+      <button id="btnIrPaginaPDF" type="button">Ir</button>
+      <button id="btnMetaDaqui" type="button">Meta daqui</button>
+    </div>
   </div>
 
   <script src="reader.js"></script>

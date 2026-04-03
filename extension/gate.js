@@ -11,6 +11,7 @@
 let modoAtual          = "python";
 let humorSelecionado   = null;    
 let energiaSelecionada = null;
+let paginaInicialEditada = false;
 
 /**
  * Extrai a URL de destino dos parâmetros da página.
@@ -133,6 +134,15 @@ async function callNative(mensagem) {
   }
 }
 
+/**
+ * Salva no config qual foi o último livro aberto no modo JS.
+ * @param {string} bookId
+ */
+function salvarUltimoLivroJS(bookId) {
+  if (!bookId) return;
+  callNative({ action: "save_config", config: { ultimo_livro_js: bookId } });
+}
+
 // ─── Helpers de UI ────────────────────────────────────────────────────────────
 
 /**
@@ -201,7 +211,7 @@ function trocarModo(modo) {
  * É o equivalente a construir uma string HTML e injetar,
  * mas mais seguro (sem risco de XSS) e mais legível.
  */
-async function carregarLivros() {
+async function carregarLivros(bookIdPreferido = null) {
   if (modoAtual === "js") {
     const livros = await BookDB.listar();
     const select = document.getElementById("selectLivroJS");
@@ -213,17 +223,23 @@ async function carregarLivros() {
       return;
     }
  
+    const resConfig = await callNative({ action: "get_config" });
+    const ultimoLivro = resConfig.config?.ultimo_livro_js || null;
+    const bookIdSelecionado = bookIdPreferido || ultimoLivro;
+
     livros.forEach((livro, indice) => {
       const opt       = document.createElement("option");
       opt.value       = livro.id;
       opt.textContent = `${livro.nome} (${livro.formato})`;
-      if (indice === 0) opt.selected = true; // pré-seleciona o primeiro
+      if (livro.id === bookIdSelecionado || (!bookIdSelecionado && indice === 0)) {
+        opt.selected = true;
+      }
       select.appendChild(opt);
     });
  
     // Carrega bookmark do livro pré-selecionado
-    if (livros.length > 0) {
-      atualizarCampoPaginaInicial(livros[0].id);
+    if (select.value) {
+      atualizarCampoPaginaInicial(select.value);
     }
  
   } else {
@@ -255,10 +271,15 @@ async function carregarLivros() {
 async function atualizarCampoPaginaInicial(bookId) {
   const campo = document.getElementById("paginaInicial");
   if (!campo) return;
-  if (!bookId) { campo.value = 1; return; }
+  if (!bookId) {
+    campo.value = 1;
+    paginaInicialEditada = false;
+    return;
+  }
  
   const pagina = await carregarBookmark(bookId);
   campo.value  = pagina;
+  paginaInicialEditada = false;
  
   // Exibe uma dica se há progresso salvo
   const dica = document.getElementById("dicaBookmark");
@@ -316,8 +337,17 @@ async function iniciarSessao() {
 
   const modo   = document.getElementById("tipoMeta").value;
   const amount = Number(document.getElementById("quantidadeMeta").value);
-    // paginaInicial: onde a contagem começa. Vem do bookmark ou da entrada manual.
-  const paginaInicial = Math.max(1, Number(document.getElementById("paginaInicial")?.value) || 1);
+  const campoPaginaInicial = document.getElementById("paginaInicial");
+  let paginaInicial = 1;
+
+  if (modoAtual === "js") {
+    if (!paginaInicialEditada) {
+      paginaInicial = await carregarBookmark(bookId);
+      if (campoPaginaInicial) campoPaginaInicial.value = paginaInicial;
+    } else {
+      paginaInicial = Math.max(1, Number(campoPaginaInicial?.value) || 1);
+    }
+  }
 
   // Registra no analytics ANTES de enviar ao background
   // Assim temos o registro mesmo se o background falhar
@@ -340,6 +370,10 @@ async function iniciarSessao() {
   });
 
   if (res.ok) {
+    if (modoAtual === "js") {
+      salvarUltimoLivroJS(bookId);
+    }
+
     const tipoStr = modo === "pages" ? "página(s)" : "capítulo(s)";
     mostrarStatus(
       `📖 Sessão iniciada: leia ${amount} ${tipoStr} e clique em "Marcar como concluído".`,
@@ -434,21 +468,27 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("inputArquivo").addEventListener("change", async evento => {
     const arquivos = Array.from(evento.target.files);
     mostrarStatus(`Adicionando ${arquivos.length} livro(s)…`, "info");
+    let ultimoLivroAdicionado = null;
     for (const arquivo of arquivos) {
       const arrayBuffer = await arquivo.arrayBuffer();
       const formato     = arquivo.name.endsWith(".epub") ? "epub" : "pdf";
       const id          = `livro_${Date.now()}_${arquivo.name}`;
       const nome        = arquivo.name.replace(/\.(epub|pdf)$/i, "");
       await BookDB.salvar(id, nome, formato, arrayBuffer);
+      ultimoLivroAdicionado = id;
     }
     mostrarStatus(`✅ ${arquivos.length} livro(s) adicionado(s).`, "ok");
-    await carregarLivros();
+    await carregarLivros(ultimoLivroAdicionado);
     evento.target.value = "";
   });
  
   // Quando o usuário troca o livro selecionado, atualiza o campo de página inicial
   document.getElementById("selectLivroJS").addEventListener("change", e => {
     atualizarCampoPaginaInicial(e.target.value || null);
+  });
+
+  document.getElementById("paginaInicial")?.addEventListener("input", () => {
+    paginaInicialEditada = true;
   });
  
   document.querySelectorAll("#escalaHumor .escala-btn").forEach(btn => {

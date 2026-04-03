@@ -7,7 +7,10 @@
 let config = {
   modo:               "python",
   sites_bloqueados:   ["x.com", "twitter.com"],
-  duracao_acesso_min: 60
+  duracao_acesso_min: 60,
+  max_paginas_secao:  25,
+  margem_paginas_secao: 5,
+  min_paginas_secao: 10
 };
 
 // ─── IndexedDB ─────────────────────────────────────────────────────────────────
@@ -101,14 +104,36 @@ function selecionarModo(modo) {
 
 function salvarConfigGeral() {
   const duracao = Number(document.getElementById("duracaoAcesso").value);
+  const maxPaginasSecao = Number(document.getElementById("maxPaginasSecao").value);
+  const margemPaginasSecao = Number(document.getElementById("margemPaginasSecao").value);
+  const minPaginasSecao = Number(document.getElementById("minPaginasSecao").value);
 
   // Validação de intervalo antes de salvar
   if (duracao < 5 || duracao > 480) {
     mostrarToast("Duração deve ser entre 5 e 480 minutos");
     return;
   }
+  if (maxPaginasSecao < 5 || maxPaginasSecao > 200) {
+    mostrarToast("Máx. por seção deve ser entre 5 e 200 páginas");
+    return;
+  }
+  if (margemPaginasSecao < 0 || margemPaginasSecao > 30) {
+    mostrarToast("Margem deve ser entre 0 e 30 páginas");
+    return;
+  }
+  if (minPaginasSecao < 1 || minPaginasSecao > 50) {
+    mostrarToast("Mín. por seção deve ser entre 1 e 50 páginas");
+    return;
+  }
+  if (minPaginasSecao > maxPaginasSecao + margemPaginasSecao) {
+    mostrarToast("Mín. por seção não pode passar do limite máximo com margem");
+    return;
+  }
 
   config.duracao_acesso_min = duracao;
+  config.max_paginas_secao = maxPaginasSecao;
+  config.margem_paginas_secao = margemPaginasSecao;
+  config.min_paginas_secao = minPaginasSecao;
   salvarConfig();
   mostrarToast("Configurações salvas!");
 }
@@ -265,6 +290,9 @@ async function limparDados() {
   document.getElementById("cardLivros").style.display =
     config.modo === "js" ? "block" : "none";
   document.getElementById("duracaoAcesso").value = config.duracao_acesso_min;
+  document.getElementById("maxPaginasSecao").value = config.max_paginas_secao;
+  document.getElementById("margemPaginasSecao").value = config.margem_paginas_secao;
+  document.getElementById("minPaginasSecao").value = config.min_paginas_secao;
 
   renderizarSites();
   await renderizarLivros();
@@ -277,22 +305,4 @@ async function limparDados() {
   document.getElementById("btnAdicionarSite").addEventListener("click", adicionarSite);
   document.getElementById("btnExportarCSV").addEventListener("click", exportarCSV);
   document.getElementById("btnLimparDados").addEventListener("click", limparDados);
-
-  document.getElementById("novoSite").addEventListener("keydown", e => {
-    if (e.key === "Enter") adicionarSite();
-  });
-
-  document.getElementById("uploadLivros").addEventListener("change", async e => {
-    const arquivos = Array.from(e.target.files);
-    for (const arq of arquivos) {
-      const buf  = await arq.arrayBuffer();
-      const fmt  = arq.name.endsWith(".epub") ? "epub" : "pdf";
-      const id   = `livro_${Date.now()}_${arq.name}`;
-      const nome = arq.name.replace(/\.(epub|pdf)$/i, "");
-      await BookDB.salvar(id, nome, fmt, buf);
-    }
-    await renderizarLivros();
-    mostrarToast(`${arquivos.length} livro(s) adicionado(s)`);
-    e.target.value = "";
-  });
 })();

@@ -22,7 +22,10 @@ const CONFIG_PADRAO = {
     "x.com",
     "twitter.com"
   ],
-  duracao_acesso_min: 60  // minutos de acesso após completar a meta
+  duracao_acesso_min: 60,   // minutos de acesso após completar a meta
+  max_paginas_secao: 25,    // limite preferido para granularidade do outline
+  margem_paginas_secao: 5,  // tolerância antes de descer um nível
+  min_paginas_secao: 10     // evita microseções ao aprofundar o outline
 };
  
 // Cache em memória das configs (evita await em toda interceptação)
