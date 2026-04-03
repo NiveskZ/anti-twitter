@@ -129,8 +129,8 @@ browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
  * Diz ao Firefox "aguarda, vou responder depois" — sem isso a conexão fecha.
  */
 
-browser.runtime.onMessage.addListener((message, sender, enviarResposta) => {
-  browser.runtime.sendNativeMessage("reader_gate_host", message)
+browser.runtime.onMessage.addListener((mensagem, sender, enviarResposta) => {
+  processarMensagem(mensagem)
     .then(enviarResposta)
     .catch(err => enviarResposta({ ok: false, error: String(err) }));
   return true; // mantém o canal aberto para resposta assíncrona
@@ -181,7 +181,7 @@ async function processarModoJS(mensagem) {
       liberado = true;
       restante = (estado.liberado_ate - Date.now()) / 60000;
     } else if (estado.liberado_ate) {
-      // Acesso expirou — limpa
+      // Acesso expirou - limpa
       estado.liberado_ate = null;
       await browser.storage.local.set({ estado_js: estado });
     }
@@ -237,7 +237,7 @@ async function processarModoJS(mensagem) {
 // Recarrega config quando storage muda (ex: usuário alterou options)
 browser.storage.onChanged.addListener((changes) => {
   if (changes.config) {
-    config = { ...CONFIG_PADRAO, ...(changes.config.newValue || {}) };
+    config = { ...config, ...(changes.config.newValue || {}) };
     console.log("[anti-twitter] Config atualizada:", config);
   }
 });
