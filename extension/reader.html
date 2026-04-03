@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Leitor</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f5f4f0; height: 100vh; display: flex; flex-direction: column; }
+
+    /* Barra superior */
+    .barra {
+      background: #1a1a18;
+      color: #fff;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .barra h1 { font-size: 0.95rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .progresso-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      color: #bbb;
+      flex-shrink: 0;
+    }
+    .barra-progresso {
+      width: 100px;
+      height: 4px;
+      background: #444;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .barra-progresso-fill {
+      height: 100%;
+      background: #4caf50;
+      border-radius: 2px;
+      transition: width 0.3s;
+    }
+
+    #btnConcluirReader {
+      padding: 6px 14px;
+      background: #2d7a2d;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    #btnConcluirReader:disabled { background: #555; cursor: not-allowed; }
+
+    /* Área do livro */
+    #areaLivro {
+      flex: 1;
+      overflow: hidden;
+      background: #fff;
+      position: relative;
+    }
+
+    /* epub.js renderiza aqui */
+    #viewerEpub {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Navegação epub */
+    .nav-epub {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0,0,0,0.2);
+      border: none;
+      color: #fff;
+      font-size: 1.4rem;
+      padding: 14px 10px;
+      cursor: pointer;
+      border-radius: 4px;
+      z-index: 10;
+      line-height: 1;
+    }
+    .nav-epub:hover { background: rgba(0,0,0,0.4); }
+    #btnAnterior { left: 4px; }
+    #btnProximo  { right: 4px; }
+
+    /* PDF: canvas numa área rolável */
+    #viewerPDF {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+      gap: 12px;
+    }
+    #viewerPDF canvas {
+      max-width: 100%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      border-radius: 4px;
+    }
+
+    /* Loading */
+    #carregando {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      font-size: 0.9rem;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <!-- Barra superior -->
+  <div class="barra">
+    <h1 id="tituloLivro">Carregando…</h1>
+    <div class="progresso-wrap">
+      <span id="textoProgresso">0 / ?</span>
+      <div class="barra-progresso">
+        <div class="barra-progresso-fill" id="fillProgresso" style="width:0%"></div>
+      </div>
+    </div>
+    <button id="btnConcluirReader" disabled onclick="concluirLeitura()">
+      Meta não atingida
+    </button>
+  </div>
+
+  <!-- Área do livro -->
+  <div id="areaLivro">
+    <div id="carregando">⏳ Carregando livro…</div>
+
+    <!-- Epub.js renderiza aqui -->
+    <div id="viewerEpub" style="display:none;">
+      <button class="nav-epub" id="btnAnterior" onclick="paginaAnterior()">‹</button>
+      <button class="nav-epub" id="btnProximo"  onclick="proximaPagina()">›</button>
+    </div>
+
+    <!-- PDF.js: mostra todas as páginas numa coluna rolável -->
+    <div id="viewerPDF" style="display:none;"></div>
+  </div>
+
+  <!-- Bibliotecas carregadas sob demanda -->
+  <!-- epub.js e pdf.js são carregados dinamicamente no reader.js -->
+  <script src="reader.js"></script>
+</body>
+</html>

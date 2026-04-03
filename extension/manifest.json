@@ -1,22 +1,27 @@
 {
   "manifest_version": 2,
   "name": "Anti-Twitter",
-  "version": "0.2",
-  "description": "Intercepta X/Twitter e exige leitura antes de liberar acesso.",
+  "version": "0.3",
+  "description": "Intercepta sites configuráveis e exige uma meta antes de liberar acesso.",
+
   "permissions": [
-  "tabs",
-  "storage",
-  "nativeMessaging",
-  "webRequest",
-  "webRequestBlocking",
-  "<all_urls>"
+    "tabs",
+    "storage",
+    "nativeMessaging",
+    "webRequest",
+    "webRequestBlocking",
+    "<all_urls>"
   ],
+
   "browser_specific_settings": {
     "gecko": {
       "id": "anti-twitter@example.local",
       "strict_min_version": "109.0"
     }
   },
+
+  "content_security_policy": "script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; object-src 'self'",
+
   "background": {
     "page": "background.html"
   },
@@ -25,10 +30,14 @@
     "page": "options.html",
     "browser_style": true
   },
-  
+
   "web_accessible_resources": [
     "gate.html",
     "gate.js",
+    "reader.html",
+    "reader.js",
+    "options.html",
+    "options.js",
     "analytics.js"
   ]
 }
