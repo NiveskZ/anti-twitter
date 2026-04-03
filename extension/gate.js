@@ -286,6 +286,7 @@ async function iniciarSessao() {
 
   const modo   = document.getElementById("tipoMeta").value;
   const amount = Number(document.getElementById("quantidadeMeta").value);
+  const offset = Math.max(0, Number(document.getElementById("offsetInicial").value) || 0);
 
   // Registra no analytics ANTES de enviar ao background
   // Assim temos o registro mesmo se o background falhar
@@ -317,7 +318,7 @@ async function iniciarSessao() {
     // No modo JS, abre o leitor inline numa nova aba
     if (modoAtual === "js") {
       const readerUrl = browser.runtime.getURL(
-        `reader.html?book=${encodeURIComponent(bookId)}&modo=${modo}&amount=${amount}`
+        `reader.html?book=${encodeURIComponent(bookId)}&modo=${modo}&amount=${amount}&offset=${offset}`
       );
       browser.tabs.create({ url: readerUrl });
     }

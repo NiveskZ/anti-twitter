@@ -27,6 +27,11 @@
       color: #bbb;
       flex-shrink: 0;
     }
+    .progresso-textos {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
     .barra-progresso {
       width: 100px;
       height: 4px;
@@ -40,6 +45,19 @@
       border-radius: 2px;
       transition: width 0.3s;
     }
+    #detalheProgresso {
+      font-size: 0.72rem;
+      color: #8f8f8f;
+      min-height: 1em;
+    }
+    #indicadorContagem {
+      font-size: 0.72rem;
+      color: #d7d7d7;
+      min-height: 1em;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    #indicadorContagem.visivel { opacity: 1; }
 
     #btnConcluirReader {
       padding: 6px 14px;
@@ -98,6 +116,13 @@
       max-width: 100%;
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
       border-radius: 4px;
+      transition: box-shadow 0.18s, outline-color 0.18s;
+    }
+    #viewerPDF canvas.lida {
+      box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.35), 0 2px 8px rgba(0,0,0,0.15);
+    }
+    #viewerPDF canvas.ignorada {
+      box-shadow: 0 0 0 2px rgba(160, 160, 160, 0.22), 0 2px 8px rgba(0,0,0,0.15);
     }
 
     #carregando {
@@ -116,8 +141,12 @@
   <div class="barra">
     <h1 id="tituloLivro">Carregando…</h1>
     <div class="progresso-wrap">
-      <span id="textoProgresso">0 / ?</span>
-      <div class="barra-progresso">
+      <div class="progresso-textos">
+        <span id="textoProgresso">0 / ?</span>
+        <span id="detalheProgresso"></span>
+        <span id="indicadorContagem"></span>
+      </div>
+      <div class="barra-progresso" aria-hidden="true">
         <div class="barra-progresso-fill" id="fillProgresso" style="width:0%"></div>
       </div>
     </div>
