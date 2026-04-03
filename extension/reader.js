@@ -82,15 +82,35 @@ function mostrarIndicador(texto) {
 /** Atualiza o rodapé com a página atual do PDF. */
 function atualizarRodapePagina(atual, total) {
   const el = document.getElementById("rodapePagina");
+  const label = document.getElementById("labelPaginaPDF");
   const input = document.getElementById("inputPaginaPDF");
   const totalEl = document.getElementById("totalPaginasPDF");
-  if (!el || !input || !totalEl) return;
+  const btnIr = document.getElementById("btnIrPaginaPDF");
+  if (!el || !label || !input || !totalEl || !btnIr) return;
   el.style.display = "flex";
+  label.style.display = "inline";
+  input.style.display = "inline-block";
+  totalEl.style.display = "inline";
+  btnIr.style.display = "inline-block";
   if (document.activeElement !== input) {
     input.value = atual;
   }
   input.max = total;
   totalEl.textContent = `/ ${total}`;
+}
+
+function configurarRodapeEpub() {
+  const el = document.getElementById("rodapePagina");
+  const label = document.getElementById("labelPaginaPDF");
+  const input = document.getElementById("inputPaginaPDF");
+  const totalEl = document.getElementById("totalPaginasPDF");
+  const btnIr = document.getElementById("btnIrPaginaPDF");
+  if (!el || !label || !input || !totalEl || !btnIr) return;
+  el.style.display = "flex";
+  label.style.display = "none";
+  input.style.display = "none";
+  totalEl.style.display = "none";
+  btnIr.style.display = "none";
 }
 
 // Conclui a sessão e fecha a aba do leitor.
@@ -102,16 +122,27 @@ async function concluirLeitura() {
 
 // ─── Bookmark ─────────────────────────────────────────────────────────────────
  
+async function carregarBookmark(id) {
+  if (!id) return {};
+  const resultado = await browser.storage.local.get("bookmarks");
+  return resultado.bookmarks?.[id] || {};
+}
+
 /**
- * Salva a última página vista para um livro.
+ * Salva a posição atual de um livro.
  * Armazenado em browser.storage.local sob a chave "bookmarks".
  * @param {string} id
- * @param {number} pagina
+ * @param {Object} dados
  */
-async function salvarBookmark(id, pagina) {
+async function salvarBookmark(id, dados) {
+  if (!id) return;
   const resultado = await browser.storage.local.get("bookmarks");
   const bookmarks = resultado.bookmarks || {};
-  bookmarks[id]   = { pagina, timestamp: Date.now() };
+  bookmarks[id] = {
+    ...(bookmarks[id] || {}),
+    ...dados,
+    timestamp: Date.now()
+  };
   await browser.storage.local.set({ bookmarks });
 }
 
@@ -446,6 +477,44 @@ async function detectarEstrutura(pdfDoc, totalPaginas) {
 // ─── Leitor EPUB ──────────────────────────────────────────────────────────────
  
 let rendition = null;
+let livroEpub = null;
+
+function normalizarHrefEpub(href = "") {
+  return href.split("#")[0];
+}
+
+function resolverTituloTocEpub(item) {
+  return item?.label || item?.title || item?.href || "Seção";
+}
+
+function mapearSumarioEpub(itens = []) {
+  return itens
+    .map(item => ({
+      titulo: resolverTituloTocEpub(item),
+      href: item?.href || "",
+      filhos: mapearSumarioEpub(item?.subitems || item?.items || [])
+    }))
+    .filter(item => item.href || item.filhos.length > 0);
+}
+
+function coletarCapitulosEpub(itens = [], vistos = new Set(), capitulos = []) {
+  itens.forEach(item => {
+    const hrefBase = normalizarHrefEpub(item?.href || "");
+    if (hrefBase && !vistos.has(hrefBase)) {
+      vistos.add(hrefBase);
+      capitulos.push({
+        id: hrefBase,
+        titulo: resolverTituloTocEpub(item),
+        href: item.href,
+        hrefBase
+      });
+    }
+
+    coletarCapitulosEpub(item?.subitems || item?.items || [], vistos, capitulos);
+  });
+
+  return capitulos;
+}
  
 /**
  * Inicializa o leitor epub.js.
@@ -453,126 +522,296 @@ let rendition = null;
  * @param {ArrayBuffer} arrayBuffer
  */
 async function iniciarEpub(arrayBuffer) {
+  const ZOOM_MIN = 85;
+  const ZOOM_MAX = 170;
+  const ZOOM_PASSO = 10;
+
   await carregarScript("https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js");
   await carregarScript("https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js");
- 
-  document.getElementById("viewerEpub").style.display = "block";
-  document.getElementById("carregando").style.display = "none";
 
-  const livro = ePub(arrayBuffer);
-  rendition   = livro.renderTo("viewerEpub", {
-    width: "100%", height: "100%", flow: "paginated"
+  const viewerEpub = document.getElementById("viewerEpub");
+  const acoesPDF = document.getElementById("acoesPDF");
+  const btnToggleSumario = document.getElementById("btnToggleSumario");
+  const btnFecharSumario = document.getElementById("btnFecharSumario");
+  const listaSumario = document.getElementById("listaSumario");
+  const painelSumario = document.getElementById("painelSumario");
+  const btnZoomMenos = document.getElementById("btnZoomMenos");
+  const btnZoomMais = document.getElementById("btnZoomMais");
+  const textoZoomPDF = document.getElementById("textoZoomPDF");
+  const btnMetaDaqui = document.getElementById("btnMetaDaqui");
+  const bookmark = await carregarBookmark(bookId);
+  let zoomEpub = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Number(bookmark.epub_zoom) || 100));
+  let localizacaoAtual = null;
+  let baseLocalizacaoSessao = Number.isFinite(bookmark.location) ? bookmark.location : 0;
+  let baseCapituloSessao = 0;
+
+  viewerEpub.style.display = "block";
+  acoesPDF.style.display = "flex";
+  configurarRodapeEpub();
+  document.getElementById("carregando").textContent = "Preparando EPUB…";
+
+  livroEpub = ePub(arrayBuffer);
+  const [navigation] = await Promise.all([
+    livroEpub.loaded.navigation.catch(() => ({ toc: [] })),
+    livroEpub.ready
+  ]);
+
+  const sumario = mapearSumarioEpub(navigation?.toc || []);
+  const capitulos = coletarCapitulosEpub(navigation?.toc || []);
+  const primeiroCapituloDeConteudo = capitulos.find(capitulo =>
+    !TITULOS_PRELIMINARES.test(capitulo.titulo || "") &&
+    !TITULOS_ESTRUTURAIS.test(capitulo.titulo || "")
+  ) || capitulos[0] || null;
+
+  rendition = livroEpub.renderTo("viewerEpub", {
+    width: "100%",
+    height: "100%",
+    flow: "paginated"
   });
-  rendition.display();
- 
-  let paginasViradas = 0;
-  rendition.on("relocated", location => {
-    paginasViradas++;
-    const progresso = tipoMeta === "chapter" ? location.start.index : paginasViradas;
-    atualizarProgresso(progresso, metaTotal);
-    if (bookId) salvarBookmark(bookId, location.start.index);
-  });
-}
+  rendition.themes.fontSize(`${zoomEpub}%`);
+  textoZoomPDF.textContent = `${zoomEpub}%`;
 
-function paginaAnterior() {
-  if (rendition) rendition.prev();
-}
+  document.getElementById("carregando").textContent = "Gerando posições do EPUB…";
+  await livroEpub.locations.generate(1200);
 
-function proximaPagina() {
-  if (rendition) rendition.next();
-}
+  function obterIndiceLocalizacao(location) {
+    if (!location) return 0;
 
-// ─── Leitor PDF ───────────────────────────────────────────────────────────────
+    if (Number.isFinite(location.start?.location)) {
+      return location.start.location;
+    }
 
-function formatarZoom(valor) {
-  return `${Math.round(valor * 100)}%`;
-}
+    if (livroEpub.locations && typeof livroEpub.locations.locationFromCfi === "function" && location.start?.cfi) {
+      const indice = livroEpub.locations.locationFromCfi(location.start.cfi);
+      return Number.isFinite(indice) ? indice : 0;
+    }
 
-function montarItensSumario(sumario, aoClicar, nivel = 0) {
-  const fragmento = document.createDocumentFragment();
+    return 0;
+  }
 
-  sumario.forEach(item => {
+  function obterCapituloAtual(location) {
+    if (!location) {
+      return { indice: -1, capitulo: null };
+    }
+
+    const hrefAtual = normalizarHrefEpub(location.start?.href || "");
+    const indicePorHref = capitulos.findIndex(capitulo => capitulo.hrefBase === hrefAtual);
+    if (indicePorHref >= 0) {
+      return { indice: indicePorHref, capitulo: capitulos[indicePorHref] };
+    }
+
+    const indiceSpine = Math.max(0, Number(location.start?.index) || 0);
+    return {
+      indice: indiceSpine,
+      capitulo: capitulos[indiceSpine] || null
+    };
+  }
+
+  function contarCapitulosConcluidosNaSessao(indiceAtual) {
+    if (indiceAtual < 0) return 0;
+    return Math.max(0, indiceAtual - baseCapituloSessao);
+  }
+
+  function contarPaginasNaSessao(indiceAtual) {
+    return Math.max(1, indiceAtual - baseLocalizacaoSessao + 1);
+  }
+
+  function salvarPosicaoAtual(location) {
+    if (!bookId || !location?.start?.cfi) return;
+
+    const indiceAtual = obterIndiceLocalizacao(location);
+    const { capitulo } = obterCapituloAtual(location);
+
+    salvarBookmark(bookId, {
+      cfi: location.start.cfi,
+      location: indiceAtual,
+      href: location.start?.href || "",
+      href_base: capitulo?.hrefBase || normalizarHrefEpub(location.start?.href || ""),
+      epub_zoom: zoomEpub
+    });
+  }
+
+  function atualizarDetalheEpub(location) {
+    const { indice, capitulo } = obterCapituloAtual(location);
+    const paginaAtual = location.start?.displayed?.page || 1;
+    const totalPaginas = location.start?.displayed?.total || paginaAtual;
+
+    if (tipoMeta === "chapter") {
+      atualizarDetalhe(
+        `${capitulo?.titulo || `Cap. ${indice + 1}`}: ${paginaAtual}/${totalPaginas}`
+      );
+      atualizarProgresso(contarCapitulosConcluidosNaSessao(indice), metaTotal);
+      return;
+    }
+
+    const indiceAtual = obterIndiceLocalizacao(location);
+    const lidas = contarPaginasNaSessao(indiceAtual);
+    atualizarDetalhe(`${lidas} / ${metaTotal} posições na meta atual`);
+    atualizarProgresso(lidas, metaTotal);
+  }
+
+  function alternarSumario() {
+    painelSumario.classList.toggle("aberto");
+  }
+
+  function montarItemSumarioEpub(item, nivel = 0) {
     const botao = document.createElement("button");
     botao.type = "button";
     botao.className = `item-sumario nivel-${Math.min(nivel, 3)}`;
-    botao.textContent = item.titulo || `Página ${item.pagina}`;
-    botao.addEventListener("click", () => aoClicar(item.pagina));
-    fragmento.appendChild(botao);
-
-    if (item.filhos?.length) {
-      fragmento.appendChild(montarItensSumario(item.filhos, aoClicar, nivel + 1));
+    botao.textContent = item.titulo || "Seção";
+    if (!item.href) {
+      botao.disabled = true;
+      botao.style.opacity = "0.65";
+    } else {
+      botao.addEventListener("click", async () => {
+        painelSumario.classList.remove("aberto");
+        await rendition.display(item.href);
+      });
     }
-  });
+    listaSumario.appendChild(botao);
 
-  return fragmento;
-}
-
-function preencherPainelSumario(sumario, aoClicar) {
-  const lista = document.getElementById("listaSumario");
-  if (!lista) return;
-
-  lista.replaceChildren();
-  if (!sumario?.length) {
-    const vazio = document.createElement("div");
-    vazio.textContent = "Nenhum sumário disponível.";
-    vazio.style.padding = "8px 10px";
-    vazio.style.color = "#6f6d66";
-    vazio.style.fontSize = "0.82rem";
-    lista.appendChild(vazio);
-    return;
+    (item.filhos || []).forEach(filho => montarItemSumarioEpub(filho, nivel + 1));
   }
 
-  lista.appendChild(montarItensSumario(sumario, aoClicar));
-}
+  async function atualizarZoomEpub(delta) {
+    const novaEscala = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoomEpub + delta));
+    if (novaEscala === zoomEpub) return;
 
+    const cfiAtual = localizacaoAtual?.start?.cfi || rendition.currentLocation()?.start?.cfi;
+    zoomEpub = novaEscala;
+    textoZoomPDF.textContent = `${zoomEpub}%`;
+    rendition.themes.fontSize(`${zoomEpub}%`);
+    if (bookId) {
+      salvarBookmark(bookId, { epub_zoom: zoomEpub });
+    }
+    if (cfiAtual) {
+      await rendition.display(cfiAtual);
+    }
+  }
+
+  function definirMetaDaquiEpub() {
+    if (!localizacaoAtual) return;
+
+    const indiceAtual = obterIndiceLocalizacao(localizacaoAtual);
+    baseLocalizacaoSessao = indiceAtual;
+
+    if (tipoMeta === "chapter") {
+      const { indice, capitulo } = obterCapituloAtual(localizacaoAtual);
+      baseCapituloSessao = Math.max(0, indice);
+      atualizarProgresso(0, metaTotal);
+      atualizarDetalhe(
+        `${capitulo?.titulo || `Cap. ${indice + 1}`}: ${localizacaoAtual.start?.displayed?.page || 1}/${localizacaoAtual.start?.displayed?.total || 1} · meta daqui`
+      );
+      mostrarIndicador("Meta reiniciada daqui");
+      return;
+    }
+
+    atualizarProgresso(contarPaginasNaSessao(indiceAtual), metaTotal);
+    atualizarDetalhe(`${contarPaginasNaSessao(indiceAtual)} / ${metaTotal} posições na meta atual`);
+    mostrarIndicador("Meta reiniciada daqui");
+  }
+
+  listaSumario.innerHTML = "";
+  sumario.forEach(item => montarItemSumarioEpub(item));
+
+  if (bookmark.href_base) {
+    const indiceBookmark = capitulos.findIndex(capitulo => capitulo.hrefBase === bookmark.href_base);
+    if (indiceBookmark >= 0) {
+      baseCapituloSessao = indiceBookmark;
+    }
+  }
+
+  rendition.on("relocated", location => {
+    localizacaoAtual = location;
+    salvarPosicaoAtual(location);
+    atualizarDetalheEpub(location);
+  });
+
+  await rendition.display(bookmark.cfi || primeiroCapituloDeConteudo?.href || undefined);
+
+  if (!bookmark.href_base && localizacaoAtual) {
+    baseCapituloSessao = Math.max(0, obterCapituloAtual(localizacaoAtual).indice);
+  }
+
+  if (!bookmark.cfi && localizacaoAtual) {
+    baseLocalizacaoSessao = obterIndiceLocalizacao(localizacaoAtual);
+  }
+  if (localizacaoAtual) {
+    atualizarDetalheEpub(localizacaoAtual);
+  }
+
+  btnToggleSumario?.addEventListener("click", alternarSumario);
+  btnFecharSumario?.addEventListener("click", () => painelSumario.classList.remove("aberto"));
+  btnZoomMenos?.addEventListener("click", () => atualizarZoomEpub(-ZOOM_PASSO));
+  btnZoomMais?.addEventListener("click", () => atualizarZoomEpub(ZOOM_PASSO));
+  btnMetaDaqui?.addEventListener("click", definirMetaDaquiEpub);
+
+  document.getElementById("carregando").style.display = "none";
+}
+ 
+function paginaAnterior() { if (rendition) rendition.prev(); }
+function proximaPagina()  { if (rendition) rendition.next(); }
+ 
+// ─── Leitor PDF ───────────────────────────────────────────────────────────────
+ 
+/**
+ * Inicializa o leitor PDF.js, detecta estrutura e renderiza as páginas.
+ *
+ * threshold: 0.85 — 85% do canvas precisa estar visível para a página contar.
+ * Evita que rolar rapidamente para "ver quanto falta" contabilize páginas não lidas.
+ *
+ * @param {ArrayBuffer} arrayBuffer
+ */
 async function iniciarPDF(arrayBuffer) {
-  await carregarScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js");
+  const ESCALA_BASE = 1.4;
+  const ZOOM_MIN = 0.85;
+  const ZOOM_MAX = 2.2;
+  const ZOOM_PASSO = 0.15;
+
+  await carregarScript(
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
+  );
   pdfjsLib.GlobalWorkerOptions.workerSrc =
     "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
   const container = document.getElementById("viewerPDF");
-  const carregando = document.getElementById("carregando");
-  const inputPagina = document.getElementById("inputPaginaPDF");
-  const btnIrPagina = document.getElementById("btnIrPaginaPDF");
-  const btnMetaDaqui = document.getElementById("btnMetaDaqui");
-  const painelSumario = document.getElementById("painelSumario");
-  const btnToggleSumario = document.getElementById("btnToggleSumario");
-  const btnFecharSumario = document.getElementById("btnFecharSumario");
-  const btnZoomMenos = document.getElementById("btnZoomMenos");
-  const btnZoomMais = document.getElementById("btnZoomMais");
-  const textoZoom = document.getElementById("textoZoomPDF");
-  const acoesPDF = document.getElementById("acoesPDF");
-  const ESCALA_BASE = 1.35;
-  const ZOOM_MIN = 0.75;
-  const ZOOM_MAX = 2.2;
-  const ZOOM_STEP = 0.15;
-
   container.style.display = "flex";
-  acoesPDF.style.display = "flex";
-  textoZoom.textContent = formatarZoom(1);
 
   const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   const totalPags = pdfDoc.numPages;
   const estrutura = await detectarEstrutura(pdfDoc, totalPags);
   const { capitulos, intervalosIgnorados, paginaInicialLeitura, totalPaginasContaveis, sumario } = estrutura;
-  const progressoPDF = await carregarProgressoPDF(bookId);
   const paginasVistas = new Set();
   const capitulosConcluidosPorIdx = new Set();
+  const progressoPDF = await carregarProgressoPDF(bookId);
   const paginasRenderizadas = new Set();
   const renderizacoesAtivas = new Map();
   const paginas = [];
+  let versaoRender = 0;
   const paginaComSalto = paginaInicialLeitura > 1;
   let leituraAtivada = !paginaComSalto;
   let saltoInicialExecutado = false;
   let paginaAtualVisual = 1;
+  const inputPagina = document.getElementById("inputPaginaPDF");
+  const btnIrPagina = document.getElementById("btnIrPaginaPDF");
+  const btnMetaDaqui = document.getElementById("btnMetaDaqui");
+  const acoesPDF = document.getElementById("acoesPDF");
+  const btnToggleSumario = document.getElementById("btnToggleSumario");
+  const btnFecharSumario = document.getElementById("btnFecharSumario");
+  const listaSumario = document.getElementById("listaSumario");
+  const painelSumario = document.getElementById("painelSumario");
+  const btnZoomMenos = document.getElementById("btnZoomMenos");
+  const btnZoomMais = document.getElementById("btnZoomMais");
+  const textoZoomPDF = document.getElementById("textoZoomPDF");
   let paginaBaseSessao = paginaInicialLeitura;
   let indiceBaseCapitulo = Math.max(0, encontrarCapituloAtual(capitulos, paginaInicialLeitura));
-  let zoomAtual = 1;
-  let versaoRender = 0;
+  let zoomPDF = 1;
 
-  carregarIndicacaoInicial();
+  document.getElementById("carregando").textContent = "Preparando páginas…";
+  acoesPDF.style.display = "flex";
   inputPagina.max = totalPags;
   inputPagina.value = paginaComSalto ? paginaInicialLeitura : 1;
+  textoZoomPDF.textContent = "100%";
 
   for (let i = 1; i <= totalPags; i++) {
     const pagina = await pdfDoc.getPage(i);
@@ -582,6 +821,8 @@ async function iniciarPDF(arrayBuffer) {
 
     shell.className = "pagina-pdf";
     shell.dataset.pagina = i;
+    shell.style.width = `${viewport.width}px`;
+    shell.style.height = `${viewport.height}px`;
 
     placeholder.className = "pagina-pdf-placeholder";
     placeholder.textContent = `Página ${i}`;
@@ -591,48 +832,40 @@ async function iniciarPDF(arrayBuffer) {
     paginas.push({
       numero: i,
       shell,
-      placeholder,
       larguraBase: viewport.width,
       alturaBase: viewport.height
     });
-    ajustarShellPagina(paginas[paginas.length - 1]);
   }
 
-  preencherPainelSumario(sumario, pagina => {
-    painelSumario.classList.remove("aberto");
-    irParaPagina(pagina);
-  });
+  function atualizarEscalaVisualDaPagina(paginaInfo) {
+    const largura = paginaInfo.larguraBase * zoomPDF;
+    const altura = paginaInfo.alturaBase * zoomPDF;
+    paginaInfo.shell.style.width = `${largura}px`;
+    paginaInfo.shell.style.height = `${altura}px`;
 
-  function carregarIndicacaoInicial() {
-    if (paginaComSalto) {
-      atualizarDetalhe(`Na capa · avance para continuar da p.${paginaInicialLeitura}`);
-      atualizarRodapePagina(1, totalPags);
-      return;
-    }
-    atualizarDetalhe(`${paginasVistas.size} / ${totalPaginasContaveis} páginas válidas`);
-  }
-
-  function ajustarShellPagina(paginaInfo) {
-    paginaInfo.shell.style.width = `${paginaInfo.larguraBase * zoomAtual}px`;
-    paginaInfo.shell.style.height = `${paginaInfo.alturaBase * zoomAtual}px`;
-    paginaInfo.placeholder.style.height = `${paginaInfo.alturaBase * zoomAtual}px`;
+    const elemento = paginaInfo.shell.firstElementChild;
+    if (!elemento) return;
+    elemento.style.width = `${largura}px`;
+    elemento.style.height = `${altura}px`;
   }
 
   async function renderizarPagina(numeroPagina) {
     if (paginasRenderizadas.has(numeroPagina)) return;
     if (renderizacoesAtivas.has(numeroPagina)) return renderizacoesAtivas.get(numeroPagina);
 
-    const versaoAtual = versaoRender;
     const tarefa = (async () => {
       const paginaInfo = paginas[numeroPagina - 1];
       if (!paginaInfo) return;
+      const versaoAtual = versaoRender;
 
       const pagina = await pdfDoc.getPage(numeroPagina);
-      const viewport = pagina.getViewport({ scale: ESCALA_BASE * zoomAtual });
+      const viewport = pagina.getViewport({ scale: ESCALA_BASE * zoomPDF });
       const canvas = document.createElement("canvas");
       canvas.width = viewport.width;
       canvas.height = viewport.height;
       canvas.dataset.pagina = numeroPagina;
+      canvas.style.width = `${viewport.width}px`;
+      canvas.style.height = `${viewport.height}px`;
 
       await pagina.render({
         canvasContext: canvas.getContext("2d"),
@@ -640,7 +873,6 @@ async function iniciarPDF(arrayBuffer) {
       }).promise;
 
       if (versaoAtual !== versaoRender) return;
-
       paginaInfo.shell.replaceChildren(canvas);
       paginasRenderizadas.add(numeroPagina);
       renderizacoesAtivas.delete(numeroPagina);
@@ -650,14 +882,17 @@ async function iniciarPDF(arrayBuffer) {
     return tarefa;
   }
 
-  function limparPaginasRenderizadas() {
+  function resetarPaginasRenderizadas() {
     versaoRender++;
     paginasRenderizadas.clear();
     renderizacoesAtivas.clear();
 
-    paginas.forEach(pagina => {
-      ajustarShellPagina(pagina);
-      pagina.shell.replaceChildren(pagina.placeholder);
+    paginas.forEach(paginaInfo => {
+      const placeholder = document.createElement("div");
+      placeholder.className = "pagina-pdf-placeholder";
+      placeholder.textContent = `Página ${paginaInfo.numero}`;
+      paginaInfo.shell.replaceChildren(placeholder);
+      atualizarEscalaVisualDaPagina(paginaInfo);
     });
   }
 
@@ -665,6 +900,13 @@ async function iniciarPDF(arrayBuffer) {
     for (let numero = Math.max(1, centro - raio); numero <= Math.min(totalPags, centro + raio); numero++) {
       renderizarPagina(numero);
     }
+  }
+
+  function atualizarZoomPDF(novoZoom) {
+    zoomPDF = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, novoZoom));
+    textoZoomPDF.textContent = `${Math.round(zoomPDF * 100)}%`;
+    resetarPaginasRenderizadas();
+    renderizarFaixa(paginaAtualVisual || paginaInicialLeitura || 1, 2);
   }
 
   function obterRazaoVisivel(shell) {
@@ -685,6 +927,7 @@ async function iniciarPDF(arrayBuffer) {
     paginas.forEach(pagina => {
       const razao = obterRazaoVisivel(pagina.shell);
       if (razao <= 0) return;
+
       if (!melhorPagina || razao > melhorRazao) {
         melhorPagina = pagina;
         melhorRazao = razao;
@@ -697,7 +940,7 @@ async function iniciarPDF(arrayBuffer) {
     atualizarRodapePagina(paginaAtualVisual, totalPags);
 
     if (leituraAtivada && bookId) {
-      salvarBookmark(bookId, paginaAtualVisual);
+      salvarBookmark(bookId, { pagina: paginaAtualVisual });
     }
 
     renderizarFaixa(paginaAtualVisual, 2);
@@ -735,13 +978,6 @@ async function iniciarPDF(arrayBuffer) {
     salvarProgressoPDF(bookId, progressoPDF);
   }
 
-  function atualizarDetalheDoCapitulo(capitulo, indice) {
-    const lidas = contarPaginasLidasNoCapitulo(capitulo);
-    atualizarDetalhe(
-      `${capitulo.titulo || `Cap. ${indice + 1}`}: ${lidas}/${capitulo.totalPaginas} · Total: ${paginasVistas.size}/${totalPaginasContaveis}`
-    );
-  }
-
   function processarPaginaVisivel(shell, origem = "observer") {
     const numPag = Number(shell.dataset.pagina);
     const jaVista = paginasVistas.has(numPag);
@@ -757,28 +993,35 @@ async function iniciarPDF(arrayBuffer) {
 
     if (tipoMeta === "chapter" && capitulos.length > 0) {
       const idx = encontrarCapituloAtual(capitulos, numPag);
-      const capituloAtual = capitulos[idx];
+      const cap = capitulos[idx];
 
-      if (!capituloAtual) return;
+      if (cap) {
+        hidratarProgressoDoCapitulo(cap);
+        paginasVistas.add(numPag);
+        salvarPaginaLidaNoCapitulo(cap, numPag);
 
-      hidratarProgressoDoCapitulo(capituloAtual);
-      paginasVistas.add(numPag);
-      salvarPaginaLidaNoCapitulo(capituloAtual, numPag);
+        const lidas = contarPaginasLidasNoCapitulo(cap);
+        const concluiu = concluirCapituloSeNecessario(cap, idx, paginasVistas, capitulosConcluidosPorIdx);
 
-      const concluiu = concluirCapituloSeNecessario(capituloAtual, idx, paginasVistas, capitulosConcluidosPorIdx);
-      atualizarDetalheDoCapitulo(capituloAtual, idx);
-      atualizarProgresso(contarCapitulosConcluidosNaSessao(), metaTotal);
-
-      if (origem !== "inicial" && (!jaVista || concluiu)) {
-        mostrarIndicador(
-          concluiu
-            ? `${capituloAtual.titulo || `Cap. ${idx + 1}`} concluído`
-            : `p.${numPag} contabilizada`
+        atualizarDetalhe(
+          `${cap.titulo || `Cap. ${idx + 1}`}: ${lidas}/${cap.totalPaginas} · Total: ${paginasVistas.size}/${totalPaginasContaveis}`
         );
+
+        if (origem !== "inicial" && (!jaVista || concluiu)) {
+          mostrarIndicador(concluiu
+            ? `${cap.titulo || `Cap. ${idx + 1}`} concluído`
+            : `p.${numPag} contabilizada`
+          );
+        }
       }
+
+      atualizarProgresso(contarCapitulosConcluidosNaSessao(), metaTotal);
       return;
     }
 
+    if (!jaVista && bookId) {
+      salvarBookmark(bookId, { pagina: numPag });
+    }
     atualizarProgresso(contarPaginasLidasNaSessao(), metaTotal);
     atualizarDetalhe(`${paginasVistas.size} / ${totalPaginasContaveis} páginas válidas`);
     if (origem !== "inicial" && !jaVista) mostrarIndicador(`p.${numPag} contabilizada`);
@@ -854,6 +1097,26 @@ async function iniciarPDF(arrayBuffer) {
     mostrarIndicador("Meta reiniciada daqui");
   }
 
+  function alternarSumario() {
+    painelSumario.classList.toggle("aberto");
+  }
+
+  function montarItemSumario(item, nivel = 0) {
+    if (!item?.pagina) return;
+
+    const botao = document.createElement("button");
+    botao.type = "button";
+    botao.className = `item-sumario nivel-${Math.min(nivel, 3)}`;
+    botao.textContent = item.titulo || `Página ${item.pagina}`;
+    botao.addEventListener("click", () => {
+      painelSumario.classList.remove("aberto");
+      irParaPagina(item.pagina);
+    });
+    listaSumario.appendChild(botao);
+
+    (item.filhos || []).forEach(filho => montarItemSumario(filho, nivel + 1));
+  }
+
   function onWheelInicial(evento) {
     if (evento.deltaY <= 0) return;
     evento.preventDefault();
@@ -873,23 +1136,6 @@ async function iniciarPDF(arrayBuffer) {
     document.removeEventListener("keydown", onKeydownInicial);
   }
 
-  function aplicarZoom(novoZoom) {
-    const zoomNormalizado = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Number(novoZoom.toFixed(2))));
-    if (zoomNormalizado === zoomAtual) return;
-
-    zoomAtual = zoomNormalizado;
-    textoZoom.textContent = formatarZoom(zoomAtual);
-    limparPaginasRenderizadas();
-    renderizarFaixa(paginaAtualVisual, 2);
-
-    requestAnimationFrame(() => {
-      const alvo = paginas[paginaAtualVisual - 1]?.shell;
-      if (alvo) {
-        container.scrollTop = Math.max(0, alvo.offsetTop - 16);
-      }
-    });
-  }
-
   const observer = new IntersectionObserver(entries => {
     entries.forEach(entry => {
       if (!entry.isIntersecting) return;
@@ -902,15 +1148,22 @@ async function iniciarPDF(arrayBuffer) {
   }, { threshold: 0.85 });
 
   paginas.forEach(pagina => observer.observe(pagina.shell));
+  paginas.forEach(atualizarEscalaVisualDaPagina);
+
+  listaSumario.innerHTML = "";
+  sumario.forEach(item => montarItemSumario(item));
+
   await renderizarPagina(1);
   renderizarFaixa(1, 1);
 
   if (paginaComSalto) {
+    atualizarDetalhe(`Na capa · avance para continuar da p.${paginaInicialLeitura}`);
+    atualizarRodapePagina(1, totalPags);
     renderizarFaixa(paginaInicialLeitura, 2);
     container.addEventListener("wheel", onWheelInicial, { passive: false });
     document.addEventListener("keydown", onKeydownInicial);
   } else {
-    carregando.style.display = "none";
+    document.getElementById("carregando").style.display = "none";
     requestAnimationFrame(() => {
       leituraAtivada = true;
       sincronizarPaginaAtual();
@@ -918,7 +1171,7 @@ async function iniciarPDF(arrayBuffer) {
     });
   }
 
-  carregando.style.display = "none";
+  document.getElementById("carregando").style.display = "none";
 
   container.addEventListener("scroll", () => {
     requestAnimationFrame(() => {
@@ -942,15 +1195,11 @@ async function iniciarPDF(arrayBuffer) {
       irParaPagina(Number(inputPagina.value) || paginaAtualVisual || 1);
     }
   });
-  btnMetaDaqui.addEventListener("click", definirMetaDaqui);
-  btnToggleSumario.addEventListener("click", () => {
-    painelSumario.classList.toggle("aberto");
-  });
-  btnFecharSumario.addEventListener("click", () => {
-    painelSumario.classList.remove("aberto");
-  });
-  btnZoomMais.addEventListener("click", () => aplicarZoom(zoomAtual + ZOOM_STEP));
-  btnZoomMenos.addEventListener("click", () => aplicarZoom(zoomAtual - ZOOM_STEP));
+  btnMetaDaqui?.addEventListener("click", definirMetaDaqui);
+  btnToggleSumario?.addEventListener("click", alternarSumario);
+  btnFecharSumario?.addEventListener("click", () => painelSumario.classList.remove("aberto"));
+  btnZoomMenos?.addEventListener("click", () => atualizarZoomPDF(zoomPDF - ZOOM_PASSO));
+  btnZoomMais?.addEventListener("click", () => atualizarZoomPDF(zoomPDF + ZOOM_PASSO));
 }
 
 // ─── Inicialização ────────────────────────────────────────────────────────────

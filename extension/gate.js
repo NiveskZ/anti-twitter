@@ -116,7 +116,24 @@ const BookDB = {
  */
 async function carregarBookmark(bookId) {
   const resultado = await browser.storage.local.get("bookmarks");
-  return resultado.bookmarks?.[bookId]?.pagina || 1;
+  return resultado.bookmarks?.[bookId] || null;
+}
+
+function formatoLivroSelecionadoJS() {
+  const select = document.getElementById("selectLivroJS");
+  return select.options[select.selectedIndex]?.dataset.formato || "";
+}
+
+function atualizarVisibilidadePosicaoJS() {
+  const secao = document.getElementById("secaoPaginaInicial");
+  const dica = document.getElementById("dicaBookmark");
+  const formato = formatoLivroSelecionadoJS();
+  const ehPDF = formato === "pdf";
+
+  if (secao) secao.style.display = ehPDF ? "block" : "none";
+  if (dica && !ehPDF) {
+    dica.textContent = "";
+  }
 }
 
 // ─── Comunicação com o background.js ─────────────────────────────────────────
@@ -231,6 +248,7 @@ async function carregarLivros(bookIdPreferido = null) {
       const opt       = document.createElement("option");
       opt.value       = livro.id;
       opt.textContent = `${livro.nome} (${livro.formato})`;
+      opt.dataset.formato = livro.formato;
       if (livro.id === bookIdSelecionado || (!bookIdSelecionado && indice === 0)) {
         opt.selected = true;
       }
@@ -241,6 +259,7 @@ async function carregarLivros(bookIdPreferido = null) {
     if (select.value) {
       atualizarCampoPaginaInicial(select.value);
     }
+    atualizarVisibilidadePosicaoJS();
  
   } else {
     // Modo Python: pede a lista ao app.py via background.js
@@ -277,14 +296,19 @@ async function atualizarCampoPaginaInicial(bookId) {
     return;
   }
  
-  const pagina = await carregarBookmark(bookId);
-  campo.value  = pagina;
+  const bookmark = await carregarBookmark(bookId);
+  const pagina = bookmark?.pagina || 1;
+  campo.value = pagina;
   paginaInicialEditada = false;
  
   // Exibe uma dica se há progresso salvo
   const dica = document.getElementById("dicaBookmark");
   if (dica) {
-    dica.textContent = pagina > 1 ? `↩ Continuando da p.${pagina}` : "";
+    if (formatoLivroSelecionadoJS() === "epub") {
+      dica.textContent = bookmark?.cfi ? "↩ Continuando do ponto salvo" : "";
+    } else {
+      dica.textContent = pagina > 1 ? `↩ Continuando da p.${pagina}` : "";
+    }
   }
 }
 
@@ -341,11 +365,16 @@ async function iniciarSessao() {
   let paginaInicial = 1;
 
   if (modoAtual === "js") {
+    const formatoSelecionado = formatoLivroSelecionadoJS();
     if (!paginaInicialEditada) {
-      paginaInicial = await carregarBookmark(bookId);
+      const bookmark = await carregarBookmark(bookId);
+      paginaInicial = bookmark?.pagina || 1;
       if (campoPaginaInicial) campoPaginaInicial.value = paginaInicial;
     } else {
       paginaInicial = Math.max(1, Number(campoPaginaInicial?.value) || 1);
+    }
+    if (formatoSelecionado === "epub") {
+      paginaInicial = 1;
     }
   }
 
@@ -485,6 +514,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Quando o usuário troca o livro selecionado, atualiza o campo de página inicial
   document.getElementById("selectLivroJS").addEventListener("change", e => {
     atualizarCampoPaginaInicial(e.target.value || null);
+    atualizarVisibilidadePosicaoJS();
   });
 
   document.getElementById("paginaInicial")?.addEventListener("input", () => {
