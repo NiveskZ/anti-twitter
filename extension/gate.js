@@ -1,17 +1,9 @@
 /**
  * gate.js — Lógica da página de bloqueio
- * Em Python, cada arquivo .py tem seu próprio namespace.
- * Em JS (sem módulos ES6), variáveis declaradas fora de funções
- * ficam no escopo global — acessíveis de qualquer lugar,
- * inclusive do HTML (onclick="trocarModo(...)").
  *
- * Isso é proposital aqui: as funções como `trocarModo`,
- * `iniciarSessao` etc. precisam ser globais para que o HTML
- * consiga chamá-las nos atributos onclick.
- *
- * Em projetos maiores usaríamos módulos ES6 (import/export),
- * mas extensões de browser têm restrições de CSP que tornam
- * isso mais complicado — o padrão global funciona bem aqui.
+ * Funções precisam ser globais para serem chamadas pelos event listeners
+ * registrados no DOMContentLoaded. Isso é padrão em extensões MV2 sem
+ * bundler — não usamos módulos ES6 por restrições de CSP.
  */
 
 // ─── Estado da página ────────────────────────────────────────────────────────
@@ -113,6 +105,19 @@ const BookDB = {
   }
 };
 
+// ─── Bookmark ─────────────────────────────────────────────────────────────────
+ 
+/**
+ * Carrega o bookmark salvo para um livro.
+ * Retorna o número da última página lida, ou 1 se não houver bookmark.
+ * @param {string} bookId
+ * @returns {Promise<number>}
+ */
+async function carregarBookmark(bookId) {
+  const resultado = await browser.storage.local.get("bookmarks");
+  return resultado.bookmarks?.[bookId]?.pagina || 1;
+}
+
 // ─── Comunicação com o background.js ─────────────────────────────────────────
 
 /**
@@ -201,12 +206,13 @@ async function carregarLivros() {
     const livros = await BookDB.listar();
     const select = document.getElementById("selectLivroJS");
     select.innerHTML = ""; // limpa opções anteriores
-
+ 
     if (livros.length === 0) {
-      select.innerHTML = '<option value="">Nenhum livro -- adicione um abaixo</option>';
+      select.innerHTML = '<option value="">Nenhum livro - adicione um abaixo</option>';
+      atualizarCampoPaginaInicial(null);
       return;
     }
-
+ 
     livros.forEach((livro, indice) => {
       const opt       = document.createElement("option");
       opt.value       = livro.id;
@@ -214,18 +220,23 @@ async function carregarLivros() {
       if (indice === 0) opt.selected = true; // pré-seleciona o primeiro
       select.appendChild(opt);
     });
-
+ 
+    // Carrega bookmark do livro pré-selecionado
+    if (livros.length > 0) {
+      atualizarCampoPaginaInicial(livros[0].id);
+    }
+ 
   } else {
     // Modo Python: pede a lista ao app.py via background.js
     const res    = await callNative({ action: "list_books" });
     const select = document.getElementById("selectLivroPython");
     select.innerHTML = "";
-
+ 
     if (!res.ok || !Array.isArray(res.books) || res.books.length === 0) {
       select.innerHTML = '<option value="">Nenhum livro em ~/livros</option>';
       return;
     }
-
+ 
     res.books.forEach((livro, indice) => {
       const opt       = document.createElement("option");
       opt.value       = livro.id;
@@ -236,6 +247,25 @@ async function carregarLivros() {
   }
 }
 
+/**
+ * Carrega o bookmark de um livro e preenche o campo "Começar da página".
+ * Se bookId for null, reseta o campo para 1.
+ * @param {string|null} bookId
+ */
+async function atualizarCampoPaginaInicial(bookId) {
+  const campo = document.getElementById("paginaInicial");
+  if (!campo) return;
+  if (!bookId) { campo.value = 1; return; }
+ 
+  const pagina = await carregarBookmark(bookId);
+  campo.value  = pagina;
+ 
+  // Exibe uma dica se há progresso salvo
+  const dica = document.getElementById("dicaBookmark");
+  if (dica) {
+    dica.textContent = pagina > 1 ? `↩ Continuando da p.${pagina}` : "";
+  }
+}
 
 //Consulta o estado atual e atualiza o #status na tela.
 async function atualizarStatus() {
@@ -286,7 +316,8 @@ async function iniciarSessao() {
 
   const modo   = document.getElementById("tipoMeta").value;
   const amount = Number(document.getElementById("quantidadeMeta").value);
-  const offset = Math.max(0, Number(document.getElementById("offsetInicial").value) || 0);
+    // paginaInicial: onde a contagem começa. Vem do bookmark ou da entrada manual.
+  const paginaInicial = Math.max(1, Number(document.getElementById("paginaInicial")?.value) || 1);
 
   // Registra no analytics ANTES de enviar ao background
   // Assim temos o registro mesmo se o background falhar
@@ -318,7 +349,7 @@ async function iniciarSessao() {
     // No modo JS, abre o leitor inline numa nova aba
     if (modoAtual === "js") {
       const readerUrl = browser.runtime.getURL(
-        `reader.html?book=${encodeURIComponent(bookId)}&modo=${modo}&amount=${amount}&offset=${offset}`
+        `reader.html?book=${encodeURIComponent(bookId)}&modo=${modo}&amount=${amount}&pagina=${paginaInicial}`
       );
       browser.tabs.create({ url: readerUrl });
     }
@@ -362,25 +393,6 @@ async function entrarNoSite() {
   mostrarStatus("❌ Ainda bloqueado. Conclua a meta de leitura primeiro.", "erro");
 }
 
-// ─── Upload de livros (Modo JS) ───────────────────────────────────────────────
-
-document.getElementById("inputArquivo").addEventListener("change", async (evento) => {
-  const arquivos = Array.from(evento.target.files);
-  mostrarStatus(`Adicionando ${arquivos.length} livro(s)…`, "info");
-
-  for (const arquivo of arquivos) {
-    const arrayBuffer = await arquivo.arrayBuffer();
-    const formato     = arquivo.name.endsWith(".epub") ? "epub" : "pdf";
-    const id          = `livro_${Date.now()}_${arquivo.name}`;
-    const nome        = arquivo.name.replace(/\.(epub|pdf)$/i, "");
-    await BookDB.salvar(id, nome, formato, arrayBuffer);
-  }
-
-  mostrarStatus(`✅ ${arquivos.length} livro(s) adicionado(s).`, "ok");
-  await carregarLivros();
-  evento.target.value = ""; // limpa o input para permitir re-upload do mesmo arquivo
-});
-
 // ─── Inicialização ────────────────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -413,12 +425,32 @@ document.addEventListener("DOMContentLoaded", async () => {
     ` · Modo: ${modo === "js" ? "JS (sem Python)" : "Python"}`;
 
   // ─── Event listeners ─────────────────────────────────────────────────────────
-  document.getElementById("tabJS").addEventListener("click", () => trocarModo("js"));
+  document.getElementById("tabJS").addEventListener("click",     () => trocarModo("js"));
   document.getElementById("tabPython").addEventListener("click", () => trocarModo("python"));
-  document.getElementById("btnIniciar").addEventListener("click", iniciarSessao);
+  document.getElementById("btnIniciar").addEventListener("click",  iniciarSessao);
   document.getElementById("btnConcluir").addEventListener("click", concluirSessao);
-  document.getElementById("btnEntrar").addEventListener("click", entrarNoSite);
-
+  document.getElementById("btnEntrar").addEventListener("click",   entrarNoSite);
+ 
+  document.getElementById("inputArquivo").addEventListener("change", async evento => {
+    const arquivos = Array.from(evento.target.files);
+    mostrarStatus(`Adicionando ${arquivos.length} livro(s)…`, "info");
+    for (const arquivo of arquivos) {
+      const arrayBuffer = await arquivo.arrayBuffer();
+      const formato     = arquivo.name.endsWith(".epub") ? "epub" : "pdf";
+      const id          = `livro_${Date.now()}_${arquivo.name}`;
+      const nome        = arquivo.name.replace(/\.(epub|pdf)$/i, "");
+      await BookDB.salvar(id, nome, formato, arrayBuffer);
+    }
+    mostrarStatus(`✅ ${arquivos.length} livro(s) adicionado(s).`, "ok");
+    await carregarLivros();
+    evento.target.value = "";
+  });
+ 
+  // Quando o usuário troca o livro selecionado, atualiza o campo de página inicial
+  document.getElementById("selectLivroJS").addEventListener("change", e => {
+    atualizarCampoPaginaInicial(e.target.value || null);
+  });
+ 
   document.querySelectorAll("#escalaHumor .escala-btn").forEach(btn => {
     btn.addEventListener("click", () => selecionarEscala("humor", Number(btn.dataset.valor)));
   });

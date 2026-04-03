@@ -93,6 +93,15 @@
     .linha-dupla { display: flex; gap: 10px; }
     .linha-dupla > * { flex: 1; }
 
+    /* Campo de página inicial com dica de bookmark */
+    .campo-pagina-wrap { position: relative; }
+    #dicaBookmark {
+      font-size: 0.78rem;
+      color: var(--cor-info);
+      margin-top: 4px;
+      min-height: 1.1em;
+    }
+
     .escala { display: flex; gap: 6px; }
     .escala-btn {
       flex: 1;
@@ -137,7 +146,7 @@
       cursor: pointer;
       transition: opacity 0.15s;
     }
-    button:hover   { opacity: 0.85; }
+    button:hover    { opacity: 0.85; }
     button:disabled { opacity: 0.4; cursor: not-allowed; }
 
     .btn-primario   { background: #1a1a18; color: #fff; font-weight: 500; }
@@ -166,7 +175,6 @@
 <body>
   <div class="card">
     <h1>📖 Antes do X</h1>
-
     <p class="subtitulo" id="destinoInfo">Carregando…</p>
 
     <div class="modo-tabs">
@@ -174,6 +182,7 @@
       <button class="modo-tab" id="tabPython">Modo Python · arquivos locais</button>
     </div>
 
+    <!-- Livro — modo JS -->
     <div class="secao" data-so-modo="js" id="secaoLivroJS">
       <label>Livro</label>
       <select id="selectLivroJS"></select>
@@ -181,11 +190,13 @@
       <input type="file" id="inputArquivo" accept=".epub,.pdf" multiple>
     </div>
 
+    <!-- Livro — modo Python -->
     <div class="secao" data-so-modo="python" id="secaoLivroPython">
       <label>Livro (pasta ~/livros)</label>
       <select id="selectLivroPython"></select>
     </div>
 
+    <!-- Meta de leitura -->
     <div class="secao">
       <label>Meta de leitura</label>
       <div class="linha-dupla">
@@ -197,12 +208,21 @@
       </div>
     </div>
 
+    <!--
+      Começar da página: serve tanto para continuar de onde parou (bookmark)
+      quanto para pular intro manualmente. Preenchido automaticamente pelo
+      bookmark do livro selecionado; pode ser editado livremente.
+      Só aparece no modo JS — no Python o leitor externo gerencia isso.
+    -->
     <div class="secao" data-so-modo="js">
-      <label for="offsetInicial">Pular páginas iniciais (opcional)</label>
-      <input type="number" id="offsetInicial" min="0" value="0">
-      <p class="muted">Útil para capa, sumário e prefácio. No PDF também tentamos detectar isso automaticamente.</p>
+      <label for="paginaInicial">Começar da página</label>
+      <div class="campo-pagina-wrap">
+        <input type="number" id="paginaInicial" min="1" value="1">
+        <div id="dicaBookmark"></div>
+      </div>
     </div>
 
+    <!-- Humor e energia -->
     <div class="secao">
       <label>Humor agora (opcional · para seus dados)</label>
       <div class="escala" id="escalaHumor">

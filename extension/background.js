@@ -145,7 +145,13 @@ async function processarMensagem(mensagem) {
   }
  
   if (action === "save_config") {
-    config = { ...CONFIG_PADRAO, ...mensagem.config };
+    /*
+      Mescla com `config` (estado atual), não com CONFIG_PADRAO.
+      Motivo: gate.js pode chamar save_config passando só { modo: "js" },
+      e precisamos preservar sites_bloqueados e duracao_acesso_min já configurados.
+      Usar CONFIG_PADRAO aqui resetaria as configurações do usuário.
+    */
+    config = { ...config, ...mensagem.config };
     await browser.storage.local.set({ config });
     return { ok: true };
   }
