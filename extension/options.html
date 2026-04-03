@@ -12,9 +12,19 @@
       color: #1a1a18;
     }
     .container { max-width: 600px; margin: 0 auto; }
+    .topo {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .topo-texto {
+      min-width: 0;
+    }
 
     h1 { font-size: 1.4rem; font-weight: 600; margin-bottom: 4px; }
-    .subtitulo { font-size: 0.9rem; color: #666; margin-bottom: 28px; }
+    .subtitulo { font-size: 0.9rem; color: #666; }
 
     .card {
       background: #fff;
@@ -158,8 +168,13 @@
 </head>
 <body>
   <div class="container">
-    <h1>⚙️ Configurações</h1>
-    <p class="subtitulo">Anti-Twitter · versão 0.3</p>
+    <div class="topo">
+      <div class="topo-texto">
+        <h1>⚙️ Configurações</h1>
+        <p class="subtitulo">Anti-Twitter · versão 0.3</p>
+      </div>
+      <button class="btn btn-secundario" id="btnVoltarGate">← Voltar ao gate</button>
+    </div>
 
     <div class="card">
       <h2>Modo de operação</h2>

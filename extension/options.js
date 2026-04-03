@@ -152,10 +152,17 @@ function renderizarSites() {
 
   config.sites_bloqueados.forEach(site => {
     const li = document.createElement("li");
-    li.innerHTML = `
-      <span>${site}</span>
-      <button class="btn-remover" onclick="removerSite('${site}')">Remover</button>
-    `;
+    const texto = document.createElement("span");
+    const botao = document.createElement("button");
+
+    texto.textContent = site;
+    botao.className = "btn-remover";
+    botao.type = "button";
+    botao.textContent = "Remover";
+    botao.addEventListener("click", () => removerSite(site));
+
+    li.appendChild(texto);
+    li.appendChild(botao);
     lista.appendChild(li);
   });
 }
@@ -204,13 +211,25 @@ async function renderizarLivros() {
 
   livros.forEach(livro => {
     const li = document.createElement("li");
-    li.innerHTML = `
-      <span>
-        ${livro.nome}
-        <span class="label-formato">${livro.formato}</span>
-      </span>
-      <button class="btn-remover" onclick="deletarLivro('${livro.id}')">Remover</button>
-    `;
+    const conteudo = document.createElement("span");
+    const formato = document.createElement("span");
+    const botao = document.createElement("button");
+
+    conteudo.textContent = livro.nome;
+    formato.className = "label-formato";
+    formato.textContent = livro.formato;
+    conteudo.appendChild(document.createTextNode(" "));
+    conteudo.appendChild(formato);
+
+    botao.className = "btn-remover";
+    botao.type = "button";
+    botao.textContent = "Remover";
+    botao.addEventListener("click", () => {
+      deletarLivro(livro.id);
+    });
+
+    li.appendChild(conteudo);
+    li.appendChild(botao);
     lista.appendChild(li);
   });
 }
@@ -279,6 +298,24 @@ async function limparDados() {
   mostrarToast("Dados limpos");
 }
 
+async function voltarAoGate() {
+  const gateUrl = browser.runtime.getURL("gate.html");
+  const abasGate = await browser.tabs.query({ url: `${gateUrl}*` });
+
+  if (abasGate.length > 0) {
+    const abaGate = abasGate[0];
+    await browser.tabs.update(abaGate.id, { active: true });
+    await browser.windows.update(abaGate.windowId, { focused: true });
+  } else {
+    await browser.tabs.create({ url: gateUrl });
+  }
+
+  const abaAtual = await browser.tabs.getCurrent();
+  if (abaAtual?.id) {
+    await browser.tabs.remove(abaAtual.id);
+  }
+}
+
 // ─── Inicialização ────────────────────────────────────────────────────────────
 
 (async function init() {
@@ -305,4 +342,5 @@ async function limparDados() {
   document.getElementById("btnAdicionarSite").addEventListener("click", adicionarSite);
   document.getElementById("btnExportarCSV").addEventListener("click", exportarCSV);
   document.getElementById("btnLimparDados").addEventListener("click", limparDados);
+  document.getElementById("btnVoltarGate").addEventListener("click", voltarAoGate);
 })();

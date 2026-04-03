@@ -107,10 +107,11 @@ function configurarRodapeEpub() {
   const btnIr = document.getElementById("btnIrPaginaPDF");
   if (!el || !label || !input || !totalEl || !btnIr) return;
   el.style.display = "flex";
-  label.style.display = "none";
-  input.style.display = "none";
-  totalEl.style.display = "none";
-  btnIr.style.display = "none";
+  label.style.display = "inline";
+  label.textContent = "Posição";
+  input.style.display = "inline-block";
+  totalEl.style.display = "inline";
+  btnIr.style.display = "inline-block";
 }
 
 // Conclui a sessão e fecha a aba do leitor.
@@ -538,12 +539,18 @@ async function iniciarEpub(arrayBuffer) {
   const btnZoomMenos = document.getElementById("btnZoomMenos");
   const btnZoomMais = document.getElementById("btnZoomMais");
   const textoZoomPDF = document.getElementById("textoZoomPDF");
+  const inputPagina = document.getElementById("inputPaginaPDF");
+  const totalPaginasPDF = document.getElementById("totalPaginasPDF");
+  const btnIrPagina = document.getElementById("btnIrPaginaPDF");
   const btnMetaDaqui = document.getElementById("btnMetaDaqui");
   const bookmark = await carregarBookmark(bookId);
   let zoomEpub = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Number(bookmark.epub_zoom) || 100));
   let localizacaoAtual = null;
+  let totalLocalizacoes = 0;
   let baseLocalizacaoSessao = Number.isFinite(bookmark.location) ? bookmark.location : 0;
-  let baseCapituloSessao = 0;
+  let baseCapituloSessao = -1;
+  let ultimoCapituloVisitado = -1;
+  const capitulosConcluidos = new Set();
 
   viewerEpub.style.display = "block";
   acoesPDF.style.display = "flex";
@@ -573,6 +580,11 @@ async function iniciarEpub(arrayBuffer) {
 
   document.getElementById("carregando").textContent = "Gerando posições do EPUB…";
   await livroEpub.locations.generate(1200);
+  totalLocalizacoes = Number(livroEpub.locations?.total)
+    || livroEpub.locations?._locations?.length
+    || 0;
+  inputPagina.max = Math.max(1, totalLocalizacoes);
+  totalPaginasPDF.textContent = `/ ${Math.max(1, totalLocalizacoes)}`;
 
   function obterIndiceLocalizacao(location) {
     if (!location) return 0;
@@ -600,20 +612,41 @@ async function iniciarEpub(arrayBuffer) {
       return { indice: indicePorHref, capitulo: capitulos[indicePorHref] };
     }
 
-    const indiceSpine = Math.max(0, Number(location.start?.index) || 0);
-    return {
-      indice: indiceSpine,
-      capitulo: capitulos[indiceSpine] || null
-    };
+    return { indice: -1, capitulo: null };
   }
 
-  function contarCapitulosConcluidosNaSessao(indiceAtual) {
-    if (indiceAtual < 0) return 0;
-    return Math.max(0, indiceAtual - baseCapituloSessao);
+  function contarCapitulosConcluidosNaSessao() {
+    return Array.from(capitulosConcluidos).filter(indice => indice >= baseCapituloSessao).length;
   }
 
   function contarPaginasNaSessao(indiceAtual) {
     return Math.max(1, indiceAtual - baseLocalizacaoSessao + 1);
+  }
+
+  function atualizarRodapeEpub(atual) {
+    if (document.activeElement !== inputPagina) {
+      inputPagina.value = atual;
+    }
+    inputPagina.max = Math.max(1, totalLocalizacoes);
+    totalPaginasPDF.textContent = `/ ${Math.max(1, totalLocalizacoes)}`;
+  }
+
+  function registrarMudancaDeCapitulo(indiceAtual) {
+    if (indiceAtual < 0) return;
+    if (ultimoCapituloVisitado < 0) {
+      ultimoCapituloVisitado = indiceAtual;
+      return;
+    }
+
+    if (indiceAtual > ultimoCapituloVisitado) {
+      for (let indice = ultimoCapituloVisitado; indice < indiceAtual; indice++) {
+        if (indice >= baseCapituloSessao) {
+          capitulosConcluidos.add(indice);
+        }
+      }
+    }
+
+    ultimoCapituloVisitado = indiceAtual;
   }
 
   function salvarPosicaoAtual(location) {
@@ -623,6 +656,7 @@ async function iniciarEpub(arrayBuffer) {
     const { capitulo } = obterCapituloAtual(location);
 
     salvarBookmark(bookId, {
+      pagina: indiceAtual + 1,
       cfi: location.start.cfi,
       location: indiceAtual,
       href: location.start?.href || "",
@@ -633,20 +667,22 @@ async function iniciarEpub(arrayBuffer) {
 
   function atualizarDetalheEpub(location) {
     const { indice, capitulo } = obterCapituloAtual(location);
-    const paginaAtual = location.start?.displayed?.page || 1;
-    const totalPaginas = location.start?.displayed?.total || paginaAtual;
+    const indiceAtual = obterIndiceLocalizacao(location);
+    const paginaAtual = indiceAtual + 1;
+    const totalPaginas = Math.max(1, totalLocalizacoes);
+
+    atualizarRodapeEpub(paginaAtual);
 
     if (tipoMeta === "chapter") {
       atualizarDetalhe(
-        `${capitulo?.titulo || `Cap. ${indice + 1}`}: ${paginaAtual}/${totalPaginas}`
+        `${capitulo?.titulo || "Seção atual"} · Livro: ${paginaAtual}/${totalPaginas}`
       );
-      atualizarProgresso(contarCapitulosConcluidosNaSessao(indice), metaTotal);
+      atualizarProgresso(contarCapitulosConcluidosNaSessao(), metaTotal);
       return;
     }
 
-    const indiceAtual = obterIndiceLocalizacao(location);
     const lidas = contarPaginasNaSessao(indiceAtual);
-    atualizarDetalhe(`${lidas} / ${metaTotal} posições na meta atual`);
+    atualizarDetalhe(`${lidas} / ${metaTotal} posições na meta atual · Livro: ${paginaAtual}/${totalPaginas}`);
     atualizarProgresso(lidas, metaTotal);
   }
 
@@ -698,9 +734,11 @@ async function iniciarEpub(arrayBuffer) {
     if (tipoMeta === "chapter") {
       const { indice, capitulo } = obterCapituloAtual(localizacaoAtual);
       baseCapituloSessao = Math.max(0, indice);
+      ultimoCapituloVisitado = baseCapituloSessao;
+      capitulosConcluidos.clear();
       atualizarProgresso(0, metaTotal);
       atualizarDetalhe(
-        `${capitulo?.titulo || `Cap. ${indice + 1}`}: ${localizacaoAtual.start?.displayed?.page || 1}/${localizacaoAtual.start?.displayed?.total || 1} · meta daqui`
+        `${capitulo?.titulo || `Cap. ${indice + 1}`} · meta daqui`
       );
       mostrarIndicador("Meta reiniciada daqui");
       return;
@@ -718,19 +756,23 @@ async function iniciarEpub(arrayBuffer) {
     const indiceBookmark = capitulos.findIndex(capitulo => capitulo.hrefBase === bookmark.href_base);
     if (indiceBookmark >= 0) {
       baseCapituloSessao = indiceBookmark;
+      ultimoCapituloVisitado = indiceBookmark;
     }
   }
 
   rendition.on("relocated", location => {
     localizacaoAtual = location;
+    const { indice } = obterCapituloAtual(location);
+    registrarMudancaDeCapitulo(indice);
     salvarPosicaoAtual(location);
     atualizarDetalheEpub(location);
   });
 
   await rendition.display(bookmark.cfi || primeiroCapituloDeConteudo?.href || undefined);
 
-  if (!bookmark.href_base && localizacaoAtual) {
+  if ((baseCapituloSessao < 0 || !bookmark.href_base) && localizacaoAtual) {
     baseCapituloSessao = Math.max(0, obterCapituloAtual(localizacaoAtual).indice);
+    ultimoCapituloVisitado = baseCapituloSessao;
   }
 
   if (!bookmark.cfi && localizacaoAtual) {
@@ -740,11 +782,27 @@ async function iniciarEpub(arrayBuffer) {
     atualizarDetalheEpub(localizacaoAtual);
   }
 
+  async function irParaPosicaoEpub(numero) {
+    const destino = Math.max(1, Math.min(Math.max(1, totalLocalizacoes), Number(numero) || 1));
+    const indiceDestino = destino - 1;
+    const cfiDestino = livroEpub.locations?.cfiFromLocation?.(indiceDestino);
+    if (!cfiDestino) return;
+    await rendition.display(cfiDestino);
+  }
+
   btnToggleSumario?.addEventListener("click", alternarSumario);
   btnFecharSumario?.addEventListener("click", () => painelSumario.classList.remove("aberto"));
   btnZoomMenos?.addEventListener("click", () => atualizarZoomEpub(-ZOOM_PASSO));
   btnZoomMais?.addEventListener("click", () => atualizarZoomEpub(ZOOM_PASSO));
   btnMetaDaqui?.addEventListener("click", definirMetaDaquiEpub);
+  btnIrPagina?.addEventListener("click", () => {
+    irParaPosicaoEpub(inputPagina.value);
+  });
+  inputPagina?.addEventListener("keydown", evento => {
+    if (evento.key !== "Enter") return;
+    evento.preventDefault();
+    irParaPosicaoEpub(inputPagina.value);
+  });
 
   document.getElementById("carregando").style.display = "none";
 }
